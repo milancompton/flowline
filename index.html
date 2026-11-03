@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FlowLine">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>FlowLine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#F3F5F1;--surface:#FFFFFF;--ink:#26332F;--muted:#5F6D68;--accent:#4F7F72;--accent-ink:#FFFFFF;--line:#D8E0DB;--soft:#E4EDE8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151B19;--surface:#1D2623;--ink:#E6EEEA;--muted:#9AA7A1;--accent:#7FB5A5;--accent-ink:#10201B;--line:#2C3834;--soft:#26322E;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151B19;--surface:#1D2623;--ink:#E6EEEA;--muted:#9AA7A1;--accent:#7FB5A5;--accent-ink:#10201B;--line:#2C3834;--soft:#26322E;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:'Lexend',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:18px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+#app{max-width:560px;min-height:100%;margin:0 auto;padding:20px 20px 28px;display:flex;flex-direction:column}
+h1,h2,h3,p{margin:0}
+h1{font-size:2rem;font-weight:500;line-height:1.2}
+h2{font-size:1.25rem;font-weight:500}
+.muted{color:var(--muted)}
+.small{font-size:.9rem}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:16px;min-height:52px;padding:0 20px;background:var(--soft);color:var(--ink)}
+button:disabled{opacity:.4}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.ghost{background:transparent;color:var(--muted);padding:0 12px;min-height:44px}
+.danger{background:transparent;color:var(--muted);text-decoration:underline}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;min-height:44px}
+.routine{display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:100%;padding:22px 24px;min-height:96px;background:var(--surface);border:2px solid var(--line);justify-content:center}
+.routine b{font-size:1.5rem;font-weight:500}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+input[type=text],select{width:100%;min-height:48px;padding:0 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg)}
+.tabs{display:flex;gap:8px;margin-bottom:18px}
+.tabs{overflow-x:auto}
+.tabs button{flex:1 0 auto;padding:0 14px;font-size:.9rem}
+.chip{flex:1;min-height:40px;padding:0;font-size:.8rem;border-radius:12px}
+.chip.on{background:var(--accent);color:var(--accent-ink)}
+.tabs .on{background:var(--accent);color:var(--accent-ink)}
+.iconbtn{min-width:48px;padding:0}
+.kid{flex:1;display:flex;flex-direction:column}
+.kidmain{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:12px 4px}
+.kidmain h1{font-size:clamp(2.4rem,11vw,3.4rem);font-weight:500;line-height:1.1}
+.kidmain p{font-size:1.35rem}
+.big{min-height:80px;font-size:1.5rem;width:100%;border-radius:22px}
+.dots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.dot.done{background:var(--accent)}
+.dot.now{background:transparent;box-shadow:inset 0 0 0 3px var(--accent)}
+.week{display:flex;gap:6px;margin:6px 0 14px}
+.day{flex:1;text-align:center;font-size:.75rem;color:var(--muted)}
+.day i{display:block;width:22px;height:22px;margin:0 auto 3px;border-radius:50%;border:2px solid var(--line)}
+.day.yes i{background:var(--accent);border-color:var(--accent)}
+.center{text-align:center;align-items:center}
+@media (prefers-reduced-motion:no-preference){.kidmain{animation:in .25s ease-out}@keyframes in{from{opacity:0}to{opacity:1}}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+var KEY='flowline.v2';
+function uid(){return Math.random().toString(36).slice(2,9)}
+function T(t,i){return {id:uid(),title:t,instructions:i||''}}
+var DEF={'Morning':[['Brush teeth','Top, bottom, and front.'],['Get dressed','Pick your clothes and put them on.'],['Eat breakfast'],['Put on shoes'],['Grab backpack']],
+'After School':[['Hang up backpack'],['Wash hands'],['Have a snack'],['Unpack lunch box']],
+'Evening':[['Put on pajamas'],['Brush teeth'],['Pick a book'],['Lights out']]};
+function defTasks(n){return (DEF[n]||[]).map(function(x){return T(x[0],x[1])})}
+function defRewards(){return ['Pick dessert','Pick the family meal','Extra reading time','Pick a show to watch with Mom or Dad'].map(function(t){return {id:uid(),text:t}})}
+function seed(){var rs=['Morning','After School','Evening'].map(function(n){return {id:uid(),name:n}}),k={id:uid(),name:'Child 1'},s={kids:[k],routines:rs,tasks:{},log:[],bonus:{},bonusLog:[],once:[],days:{},prog:{},rewards:defRewards()};
+rs.forEach(function(r){s.tasks[k.id+':'+r.id]=defTasks(r.name)});return s}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&Array.isArray(d.kids)&&Array.isArray(d.routines)){d.tasks=d.tasks||{};d.log=d.log||[];d.bonus=d.bonus||{};d.bonusLog=d.bonusLog||[];d.rewards=d.rewards||defRewards();d.days=d.days||{};d.prog=d.prog||{};d.once=(d.once||[]).filter(function(o){return o.date>=dayStr(0)});return d}}}catch(e){}return seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var S=load(),V={name:'home'},armed=null;
+var unlocked=false,fails=0,lockUntil=0,lastTouch=Date.now(),GATED={parent:1,kidnew:1,kidedit:1,edit:1,backup:1};
+function go(v){armed=null;if(!GATED[v.name])unlocked=false;
+  if(GATED[v.name]&&!unlocked)V={name:'pin',mode:S.pin?'enter':'set',next:v,buf:'',first:'',err:''};else V=v;
+  render();window.scrollTo(0,0)}
+document.addEventListener('pointerdown',function(){lastTouch=Date.now()});
+setInterval(function(){if(unlocked&&Date.now()-lastTouch>300000)go({name:'home'})},15000);
+function h(tag,p){var e=document.createElement(tag);p=p||{};for(var k in p){if(k.slice(0,2)==='on')e[k]=p[k];else if(k==='text')e.textContent=p[k];else e.setAttribute(k,p[k])}
+for(var i=2;i<arguments.length;i++){var c=arguments[i];if(c==null)continue;e.appendChild(typeof c==='string'?document.createTextNode(c):c)}return e}
+function by(a,id){return a.filter(function(x){return x.id===id})[0]}
+function tasksOf(k,r){var key=k+':'+r;return S.tasks[key]||(S.tasks[key]=[])}
+function bonusOf(k,r){var key=k+':'+r;return S.bonus[key]||(S.bonus[key]=[])}
+function bonusCsv(){var rows=['date,child,routine,bonus,reward,given'];S.bonusLog.forEach(function(b){var k=by(S.kids,b.kid),r=by(S.routines,b.rid);rows.push([new Date(b.t).toLocaleDateString('en-CA'),k?k.name:'',r?r.name:'',b.title,b.reward,b.given?'yes':'no'].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});return rows.join('\n')}
+function dayStr(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+function stepsFor(k,r){var td=dayStr(0);return tasksOf(k,r).concat(S.once.filter(function(o){return o.kid===k&&o.rid===r&&o.date===td&&o.title.trim()}))}
+function todayIdx(){return (new Date().getDay()+6)%7}
+function onDay(k,r,d){var a=S.days[k+':'+r];return !a||a[d]!==false}
+function doneToday(k,r){return S.log.some(function(l){return l.kid===k&&l.rid===r&&dayKey(l.t)===dayKey(Date.now())})}
+var ICONS=[[/teeth|tooth|brush/i,'🪥'],[/dress|clothes/i,'👕'],[/breakfast|cereal/i,'🥣'],[/shoe|sock/i,'👟'],[/backpack|bag/i,'🎒'],[/shower|bath/i,'🚿'],[/pajama|pjs/i,'🌙'],[/book|read/i,'📖'],[/snack|fruit/i,'🍎'],[/hand|wash/i,'🧼'],[/lunch/i,'🥪'],[/dinner|table|meal|dish/i,'🍽️'],[/homework/i,'✏️'],[/light|bed|sleep/i,'😴'],[/dog|pet|feed/i,'🐕'],[/trash|garbage/i,'🗑️']];
+function iconOf(t){if(t.icon)return t.icon;for(var i=0;i<ICONS.length;i++)if(ICONS[i][0].test(t.title||''))return ICONS[i][1];return ''}
+function speak(s){try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(s);u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
+var timer={end:0,key:''};
+function tmText(){var s=Math.max(0,Math.round((timer.end-Date.now())/1000));return s?Math.floor(s/60)+':'+('0'+s%60).slice(-2):'Time’s up'}
+setInterval(function(){var el=document.getElementById('tmr');if(el&&timer.end)el.textContent=tmText()},500);
+function plural(n){return n+(n===1?' step':' steps')}
+function dayKey(t){var d=new Date(t);return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate()}
+function twoTap(btn,key,msg,fn){if(armed!==key){armed=key;btn.textContent=msg;return}fn()}
+function topBar(label,to){return h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go(to)},text:label}))}
+
+function home(){
+  var list=h('div',{class:'stack'});
+  S.kids.forEach(function(k){list.appendChild(h('button',{class:'routine',onclick:function(){go({name:'kidhome',kid:k.id})}},h('b',{text:k.name})))});
+  if(!S.kids.length)list.appendChild(h('p',{class:'muted',text:'No children yet. A grown-up can add one.'}));
+  return h('div',{class:'stack'},
+    h('div',{class:'top'},h('h1',{text:'FlowLine'}),h('button',{class:'ghost',onclick:function(){go({name:'parent',tab:'today'})},text:'Grown-ups'})),
+    h('p',{class:'muted',text:'Who’s up?'}),list)
+}
+
+function kidhome(){
+  var k=by(S.kids,V.kid);if(!k)return home();
+  var list=h('div',{class:'stack'});
+  var td=todayIdx(),shown=0;
+  function addR(r){
+    if(!onDay(k.id,r.id,td))return;
+    var n=stepsFor(k.id,r.id).length,dn=doneToday(k.id,r.id),pg=S.prog[k.id+':'+r.id],ri=(pg&&pg.d===dayStr(0)&&pg.i>0&&pg.i<n)?pg.i:0;
+    var sub=dn?'Done today ✓':!n?'No steps yet':ri?'Continue · step '+(ri+1)+' of '+n:plural(n);
+    var b=h('button',{class:'routine',onclick:function(){if(n&&!dn)go({name:'kid',kid:k.id,rid:r.id,i:ri})}},h('b',{text:r.name}),h('span',{class:'muted small',text:sub}));
+    if(!n||dn)b.style.opacity='.6';list.appendChild(b);shown++}
+  S.routines.filter(function(r){return r.cat!=='chore'}).forEach(addR);
+  var ch=S.routines.filter(function(r){return r.cat==='chore'});
+  if(ch.length){var before=shown;list.appendChild(h('h2',{text:'Chores',style:'margin-top:8px'}));ch.forEach(addR);if(shown===before)list.removeChild(list.lastChild)}
+  if(!shown)list.appendChild(h('p',{class:'muted',text:'Nothing scheduled today.'}));
+  return h('div',{class:'stack'},topBar('‹ Back',{name:'home'}),h('h1',{text:k.name}),h('p',{class:'muted',text:'Choose a routine.'}),list)
+}
+
+function kid(){
+  var k=by(S.kids,V.kid),r=by(S.routines,V.rid);if(!k||!r)return home();
+  var ts=stepsFor(k.id,r.id);if(!ts.length)return kidhome();
+  if(V.i>=ts.length)V.i=ts.length-1;
+  var pkey=k.id+':'+r.id,pg=S.prog[pkey];if(!pg||pg.d!==dayStr(0))pg=S.prog[pkey]={d:dayStr(0),i:0,s:Date.now()};pg.i=V.i;save();
+  var t=ts[V.i],dots=h('div',{class:'dots','aria-hidden':'true'});
+  var speechOk='speechSynthesis' in window,skey=pkey+':'+V.i,tmr=null;
+  if(t.minutes>0)tmr=timer.key===skey?h('p',{id:'tmr',style:'font-size:2.2rem;font-weight:500',text:tmText()}):h('button',{onclick:function(){timer={end:Date.now()+t.minutes*60000,key:skey};render()},text:'Start timer · '+t.minutes+' min'});
+  ts.forEach(function(_,i){dots.appendChild(h('span',{class:'dot '+(i<V.i?'done':i===V.i?'now':'')}))});
+  return h('div',{class:'kid'},
+    h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go({name:'kidhome',kid:k.id})},text:'‹ Back'}),h('span',{class:'muted small',text:k.name+' · '+r.name})),
+    dots,
+    h('div',{class:'kidmain','aria-live':'polite'},
+      h('span',{class:'muted small',text:'Step '+(V.i+1)+' of '+ts.length}),
+      iconOf(t)?h('div',{style:'font-size:4.5rem;line-height:1','aria-hidden':'true',text:iconOf(t)}):null,
+      h('h1',{text:t.title}),
+      t.instructions?h('p',{class:'muted',text:t.instructions}):null,
+      speechOk?h('button',{class:'ghost',style:'align-self:flex-start',onclick:function(){speak(t.title+'. '+(t.instructions||''))},text:'🔊 Hear it'}):null,
+      tmr),
+    h('div',{class:'stack'},
+      h('button',{class:'primary big',onclick:function(){
+        if(V.i+1<ts.length)go({name:'kid',kid:k.id,rid:r.id,i:V.i+1});
+        else{S.log.push({kid:k.id,rid:r.id,t:Date.now(),s:pg.s});save();go({name:'done',kid:k.id,rid:r.id})}
+      },text:'Done'}),
+      V.i>0?h('button',{class:'ghost',onclick:function(){go({name:'kid',kid:k.id,rid:r.id,i:V.i-1})},text:'‹ Previous step'}):null))
+}
+
+function bonusEligible(k,r){return bonusOf(k,r).length>0&&!S.bonusLog.some(function(b){return b.kid===k&&dayKey(b.t)===dayKey(Date.now())})}
+function rewardText(id){var x=by(S.rewards,id);return x?x.text:''}
+function done(){
+  var r=by(S.routines,V.rid)||{name:''},kk=V.kid,rr=V.rid,back=function(){go({name:'kidhome',kid:kk})};
+  var btns=bonusEligible(kk,rr)?h('div',{class:'stack'},h('button',{class:'primary big',onclick:function(){go({name:'bonuspick',kid:kk,rid:rr})},text:'Want a bonus step?'}),h('button',{class:'ghost',onclick:back,text:'Not now'})):h('button',{class:'primary big',onclick:back,text:'Back to routines'});
+  return h('div',{class:'kid'},h('div',{class:'kidmain center'},h('h1',{text:'All done.'}),h('p',{class:'muted',text:r.name+' is finished.'})),btns)
+}
+function bonuspick(){
+  var list=h('div',{class:'stack'});
+  bonusOf(V.kid,V.rid).forEach(function(b){var rt=rewardText(b.reward);
+    list.appendChild(h('button',{class:'routine',onclick:function(){go({name:'bonus',kid:V.kid,rid:V.rid,b:b.id})}},h('b',{text:b.title}),rt?h('span',{class:'muted small',text:rt}):null))});
+  return h('div',{class:'stack'},topBar('‹ Back',{name:'kidhome',kid:V.kid}),h('h1',{text:'Pick a bonus'}),h('p',{class:'muted',text:'Choose one.'}),list)
+}
+function bonus(){
+  var b=by(bonusOf(V.kid,V.rid),V.b);if(!b)return kidhome();
+  return h('div',{class:'kid'},topBar('‹ Back',{name:'bonuspick',kid:V.kid,rid:V.rid}),
+    h('div',{class:'kidmain'},h('span',{class:'muted small',text:'Bonus'}),h('h1',{text:b.title}),b.instructions?h('p',{class:'muted',text:b.instructions}):null),
+    h('button',{class:'primary big',onclick:function(){var rt=rewardText(b.reward);S.bonusLog.push({id:uid(),kid:V.kid,rid:V.rid,t:Date.now(),title:b.title,reward:rt,given:false});save();go({name:'bonusdone',reward:rt,kid:V.kid})},text:'Done'}))
+}
+function bonusdone(){
+  return h('div',{class:'kid'},h('div',{class:'kidmain center'},h('h1',{text:'Bonus done.'}),V.reward?h('p',{class:'muted',text:'Reward: '+V.reward}):null),
+    h('button',{class:'primary big',onclick:function(){go({name:'kidhome',kid:V.kid})},text:'Back to routines'}))
+}
+
+function parent(){
+  var wrap=h('div',{class:'stack'});
+  wrap.appendChild(h('div',{class:'top'},h('h1',{text:'Grown-ups'}),h('button',{class:'ghost',onclick:function(){go({name:'home'})},text:'Kid view'})));
+  var tabs=h('div',{class:'tabs'});
+  [['today','Today'],['kids','Children'],['routines','Routines'],['rewards','Rewards'],['progress','Progress']].forEach(function(x){tabs.appendChild(h('button',{class:V.tab===x[0]?'on':'',onclick:function(){go({name:'parent',tab:x[0]})},text:x[1]}))});
+  wrap.appendChild(tabs);
+  if(V.tab==='today'){
+    var tdx=todayIdx(),any=false;
+    wrap.appendChild(h('p',{class:'muted small',text:new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}));
+    S.kids.forEach(function(k){
+      var card=h('div',{class:'card stack'},h('b',{text:k.name}));
+      S.routines.forEach(function(r){
+        if(!onDay(k.id,r.id,tdx))return;var n=stepsFor(k.id,r.id).length;if(!n)return;any=true;
+        var key=k.id+':'+r.id,pg=S.prog[key],lg=S.log.filter(function(l){return l.kid===k.id&&l.rid===r.id&&dayKey(l.t)===dayKey(Date.now())}).pop(),st;
+        if(lg)st='Done '+new Date(lg.t).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+(lg.s?' · '+Math.max(1,Math.round((lg.t-lg.s)/60000))+' min':'');
+        else if(pg&&pg.d===dayStr(0))st='In progress · step '+(pg.i+1)+' of '+n;
+        else st='Not started';
+        var row=h('div',{class:'row'},h('div',{class:'grow'},h('div',{text:r.name}),h('div',{class:'muted small',text:st})));
+        if(lg||(pg&&pg.d===dayStr(0)))row.appendChild(h('button',{class:'danger',onclick:function(){twoTap(this,'rs'+key,'Tap again to reset',function(){delete S.prog[key];S.log=S.log.filter(function(l){return !(l.kid===k.id&&l.rid===r.id&&dayKey(l.t)===dayKey(Date.now()))});save();render()})},text:'Reset'}));
+        card.appendChild(row)});
+      wrap.appendChild(card)});
+    if(!any)wrap.appendChild(h('p',{class:'muted',text:'No routines scheduled today.'}));
+  }else if(V.tab==='kids'){
+    S.kids.forEach(function(k){wrap.appendChild(h('div',{class:'card row'},h('b',{class:'grow',text:k.name}),h('button',{onclick:function(){go({name:'kidedit',kid:k.id})},text:'Edit'})))});
+    wrap.appendChild(h('button',{class:'primary',onclick:function(){go({name:'kidnew'})},text:'Add child'}));
+  }else if(V.tab==='routines'){
+    wrap.appendChild(h('p',{class:'muted small',text:'Routine names are shared by all children. Each child has their own steps.'}));
+    S.routines.forEach(function(r){
+      var del=h('button',{class:'danger',onclick:function(){twoTap(this,'r'+r.id,'Tap again to delete',function(){
+        S.routines=S.routines.filter(function(x){return x.id!==r.id});
+        Object.keys(S.tasks).forEach(function(key){if(key.split(':')[1]===r.id)delete S.tasks[key]});
+        Object.keys(S.bonus).forEach(function(key){if(key.split(':')[1]===r.id)delete S.bonus[key]});
+        S.bonusLog=S.bonusLog.filter(function(b){return b.rid!==r.id});S.once=S.once.filter(function(o){return o.rid!==r.id});
+        S.log=S.log.filter(function(l){return l.rid!==r.id});save();render()})},text:'Delete'});
+      var ri=S.routines.indexOf(r);
+      function mv(d){var j=ri+d;if(j<0||j>=S.routines.length)return;var x=S.routines[ri];S.routines[ri]=S.routines[j];S.routines[j]=x;save();render()}
+      var cs=h('select',{'aria-label':'Type',onchange:function(){r.cat=this.value;save()}},h('option',{value:'routine',text:'Routine'}),h('option',{value:'chore',text:'Chore'}));cs.value=r.cat==='chore'?'chore':'routine';
+      var u=h('button',{class:'iconbtn','aria-label':'Move up',onclick:function(){mv(-1)},text:'↑'}),dw=h('button',{class:'iconbtn','aria-label':'Move down',onclick:function(){mv(1)},text:'↓'});
+      if(ri===0)u.disabled=true;if(ri===S.routines.length-1)dw.disabled=true;
+      wrap.appendChild(h('div',{class:'card stack'},h('div',{class:'row'},h('input',{type:'text',class:'grow',value:r.name,'aria-label':'Routine name',oninput:function(){r.name=this.value;save()}}),u,dw),h('div',{class:'row'},cs,del)))});
+    wrap.appendChild(h('button',{class:'primary',onclick:function(){S.routines.push({id:uid(),name:'New routine'});save();render()},text:'Add routine'}));
+  }else if(V.tab==='rewards'){
+    wrap.appendChild(h('p',{class:'muted small',text:'Reward ideas to attach to bonus steps. Time and choices only, no money.'}));
+    S.rewards.forEach(function(x,i){wrap.appendChild(h('div',{class:'card row'},h('input',{type:'text',class:'grow',value:x.text,'aria-label':'Reward',oninput:function(){x.text=this.value;save()}}),h('button',{class:'danger',onclick:function(){S.rewards.splice(i,1);save();render()},text:'Remove'})))});
+    wrap.appendChild(h('button',{class:'primary',onclick:function(){S.rewards.push({id:uid(),text:'New reward'});save();render()},text:'Add reward'}));
+  }else{
+    var m=new Date();m.setHours(12,0,0,0);m.setDate(m.getDate()-((m.getDay()+6)%7));var days=[];for(var i=0;i<7;i++){var dd=new Date(m);dd.setDate(m.getDate()+i);days.push(dd.getTime())}
+    var fmt={month:'short',day:'numeric'};
+    wrap.appendChild(h('p',{class:'muted small',text:'Week of '+new Date(days[0]).toLocaleDateString(undefined,fmt)+' – '+new Date(days[6]).toLocaleDateString(undefined,fmt)}));
+    S.kids.forEach(function(k){
+      var card=h('div',{class:'card'},h('b',{text:k.name}));
+      S.routines.forEach(function(r){
+        var mine=S.log.filter(function(l){return l.kid===k.id&&l.rid===r.id}),week=h('div',{class:'week'}),c=0;
+        days.forEach(function(d,di){var y=mine.some(function(l){return dayKey(l.t)===dayKey(d)});if(y)c++;
+          week.appendChild(h('div',{class:'day'+(y?' yes':'')},h('i'),['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][di]))});
+        var last=mine.length?new Date(mine[mine.length-1].t).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'}):'not yet';
+        card.appendChild(h('div',{class:'muted small',style:'margin-top:12px',text:r.name+' · '+c+(c===1?' day':' days')+' this week · last: '+last}));
+        card.appendChild(week)});
+      var ws=new Date(days[0]);ws.setHours(0,0,0,0);
+      var bl=S.bonusLog.filter(function(b){return b.kid===k.id&&b.t>=ws.getTime()});
+      card.appendChild(h('div',{class:'muted small',style:'margin-top:8px',text:'Bonus steps this week: '+bl.length}));
+      bl.forEach(function(b){card.appendChild(h('div',{class:'row',style:'margin-top:8px'},h('div',{class:'grow small',text:new Date(b.t).toLocaleDateString(undefined,{weekday:'short'})+' · '+b.title+(b.reward?' → '+b.reward:'')}),h('button',{onclick:function(){b.given=!b.given;save();render()},text:b.given?'Given ✓':'Mark given'})))});
+      wrap.appendChild(card)});
+    if(!S.kids.length)wrap.appendChild(h('p',{class:'muted',text:'Nothing to show yet.'}));
+    var out=h('textarea',{'aria-label':'Bonus history',readonly:'readonly',rows:'6',style:'display:none;width:100%;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:inherit;padding:10px;font:inherit;font-size:.8rem'});
+    wrap.appendChild(h('button',{onclick:function(){out.value=bonusCsv();out.style.display='block';out.select();try{navigator.clipboard.writeText(out.value)}catch(e){}},text:'Export bonus history'}));
+    wrap.appendChild(out);
+  }
+  wrap.appendChild(h('button',{class:'ghost',onclick:function(){go({name:'backup'})},text:'Backup & restore'}));
+  wrap.appendChild(h('button',{class:'ghost',onclick:function(){V={name:'pin',mode:'set',next:{name:'parent',tab:V.tab},buf:'',first:'',err:''};render()},text:'Change PIN'}));
+  return wrap
+}
+
+function backup(){
+  var ta=h('textarea',{'aria-label':'Backup data',rows:'8',style:'width:100%;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:inherit;padding:10px;font:inherit;font-size:.8rem'}),msg=h('p',{class:'muted small',text:''});
+  function dump(){var c=JSON.parse(JSON.stringify(S));delete c.pin;delete c.pinRec;return JSON.stringify(c)}
+  return h('div',{class:'stack'},topBar('‹ Grown-ups',{name:'parent',tab:'today'}),h('h1',{text:'Backup'}),
+    h('p',{class:'muted small',text:'Copy your data somewhere safe, like Notes or an email to yourself. Paste it back here to restore. The PIN is not included.'}),
+    h('button',{class:'primary',onclick:function(){ta.value=dump();ta.select();try{navigator.clipboard.writeText(ta.value);msg.textContent='Copied. Paste it somewhere safe.'}catch(e){msg.textContent='Select all and copy.'}},text:'Back up data'}),
+    h('button',{onclick:function(){try{var a=h('a',{href:URL.createObjectURL(new Blob([dump()],{type:'application/json'})),download:'flowline-backup.json'});document.body.appendChild(a);a.click();a.remove()}catch(e){}},text:'Download file'}),
+    ta,msg,
+    h('button',{onclick:function(){twoTap(this,'restore','Tap again to replace all data',function(){
+      try{var d=JSON.parse(ta.value);if(!d||!Array.isArray(d.kids)||!Array.isArray(d.routines))throw 0;d.pin=S.pin;d.pinRec=S.pinRec;S=d;save();S=load();go({name:'home'})}catch(e){msg.textContent='That doesn’t look like a FlowLine backup.';armed=null}})},text:'Restore from pasted data'}))
+}
+
+function ph(p){var x=5381,s='fl:'+p;for(var i=0;i<s.length;i++)x=((x<<5)+x+s.charCodeAt(i))|0;return String(x)}
+function recCode(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',o='';for(var i=0;i<6;i++)o+=c[Math.floor(Math.random()*c.length)];return o}
+function pin(){
+  var m=V.mode;
+  if(m==='code')return h('div',{class:'stack'},h('h1',{text:'Recovery code'}),h('p',{class:'muted',text:'Write this down and keep it somewhere safe. It lets you reset the PIN if you forget it.'}),h('h1',{text:V.code,style:'letter-spacing:.15em;text-align:center'}),h('button',{class:'primary',onclick:function(){go(V.next)},text:'I wrote it down'}));
+  if(m==='recover'){
+    var inp=h('input',{type:'text',placeholder:'Recovery code','aria-label':'Recovery code',autocapitalize:'characters'}),rm=h('p',{class:'muted small',text:''});
+    return h('div',{class:'stack'},topBar('‹ Back',{name:'home'}),h('h1',{text:'Reset PIN'}),inp,rm,h('button',{class:'primary',onclick:function(){
+      if(inp.value.trim().toUpperCase()===S.pinRec){V={name:'pin',mode:'set',next:V.next,buf:'',first:'',err:''};render()}else rm.textContent='That code isn’t right.'},text:'Continue'}))}
+  var title={enter:'Enter PIN',set:'Create a parent PIN',confirm:'Enter it again'}[m],dots=h('div',{class:'dots',style:'margin:18px 0'});
+  for(var i=0;i<4;i++)dots.appendChild(h('span',{class:'dot'+(i<V.buf.length?' done':''),style:'width:16px;height:16px'}));
+  function press(d){
+    V.err='';
+    if(Date.now()<lockUntil){V.err='Please wait a moment.';render();return}
+    V.buf+=d;
+    if(V.buf.length<4){render();return}
+    var b=V.buf;V.buf='';
+    if(m==='enter'){
+      if(ph(b)===S.pin){fails=0;unlocked=true;go(V.next);return}
+      fails++;if(fails>=3){fails=0;lockUntil=Date.now()+30000;V.err='Too many tries. Wait 30 seconds.'}else V.err='That PIN isn’t right.';
+      render()
+    }else if(m==='set'){V.first=b;V.mode='confirm';render()}
+    else if(b===V.first){S.pin=ph(b);S.pinRec=recCode();save();unlocked=true;V.code=S.pinRec;V.mode='code';render()}
+    else{V.mode='set';V.first='';V.err='The PINs didn’t match. Try again.';render()}
+  }
+  var pad=h('div',{style:'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:320px;margin:0 auto;width:100%'});
+  [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(function(d){
+    if(d==='')pad.appendChild(h('span'));
+    else pad.appendChild(h('button',{style:'min-height:64px;font-size:1.5rem','aria-label':d==='⌫'?'Delete':String(d),onclick:function(){if(d==='⌫'){V.buf=V.buf.slice(0,-1);render()}else press(String(d))},text:String(d)}))});
+  return h('div',{class:'stack'},topBar('‹ Back',{name:'home'}),h('h1',{text:title,style:'text-align:center'}),
+    m==='set'?h('p',{class:'muted small',style:'text-align:center',text:'4 digits. This keeps children out of the Grown-ups area.'}):null,
+    dots,h('p',{class:'muted small',style:'text-align:center;min-height:1.5em',text:V.err||''}),pad,
+    m==='enter'?h('button',{class:'ghost',onclick:function(){V.mode='recover';render()},text:'Forgot PIN?'}):null)
+}
+
+function kidnew(){
+  var inp=h('input',{type:'text',placeholder:'Child’s name','aria-label':'Child name',maxlength:'30'}),msg=h('p',{class:'muted small',text:''});
+  function saveKid(){var n=inp.value.trim();if(!n){msg.textContent='Please enter a name.';inp.focus();return}
+    var k={id:uid(),name:n};S.kids.push(k);S.routines.forEach(function(r){S.tasks[k.id+':'+r.id]=defTasks(r.name)});save();go({name:'kidedit',kid:k.id})}
+  inp.onkeydown=function(e){if(e.key==='Enter')saveKid()};
+  return h('div',{class:'stack'},topBar('‹ Cancel',{name:'parent',tab:'kids'}),h('h1',{text:'Add child'}),inp,msg,h('button',{class:'primary',onclick:saveKid,text:'Save'}));
+}
+
+function kidedit(){
+  var k=by(S.kids,V.kid);if(!k)return parent();
+  var wrap=h('div',{class:'stack'});
+  wrap.appendChild(h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go({name:'parent',tab:'kids'})},text:'‹ Children'}),h('span',{class:'muted small',text:'Saved on this device'})));
+  wrap.appendChild(h('span',{class:'muted small',text:'Name'}));
+  wrap.appendChild(h('input',{type:'text',value:k.name,'aria-label':'Child name',oninput:function(){k.name=this.value;save()}}));
+  wrap.appendChild(h('h2',{text:'Routines for '+(k.name||'this child')}));
+  S.routines.forEach(function(r){
+    wrap.appendChild(h('div',{class:'card row'},h('div',{class:'grow'},h('b',{text:r.name}),h('div',{class:'muted small',text:plural(tasksOf(k.id,r.id).length)})),
+      h('button',{onclick:function(){go({name:'edit',kid:k.id,rid:r.id})},text:'Edit steps'})))});
+  var del=h('button',{class:'danger',onclick:function(){twoTap(this,'k'+k.id,'Tap again to delete this child',function(){
+    S.kids=S.kids.filter(function(x){return x.id!==k.id});
+    Object.keys(S.tasks).forEach(function(key){if(key.split(':')[0]===k.id)delete S.tasks[key]});
+    Object.keys(S.bonus).forEach(function(key){if(key.split(':')[0]===k.id)delete S.bonus[key]});
+    S.bonusLog=S.bonusLog.filter(function(b){return b.kid!==k.id});S.once=S.once.filter(function(o){return o.kid!==k.id});
+    S.log=S.log.filter(function(l){return l.kid!==k.id});save();go({name:'parent',tab:'kids'})})},text:'Delete child'});
+  wrap.appendChild(del);
+  return wrap
+}
+
+function edit(){
+  var k=by(S.kids,V.kid),r=by(S.routines,V.rid);if(!k||!r)return parent();
+  var ts=tasksOf(k.id,r.id),wrap=h('div',{class:'stack'});
+  wrap.appendChild(h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go({name:'kidedit',kid:k.id})},text:'‹ '+k.name}),h('span',{class:'muted small',text:'Saved on this device'})));
+  wrap.appendChild(h('h1',{text:r.name}));
+  wrap.appendChild(h('p',{class:'muted',text:'Steps for '+k.name}));
+  var dk=k.id+':'+r.id,drow=h('div',{class:'row',style:'gap:6px'});
+  wrap.appendChild(h('span',{class:'muted small',text:'Days this routine runs'}));
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(n,di){
+    var on=onDay(k.id,r.id,di);
+    drow.appendChild(h('button',{class:'chip'+(on?' on':''),'aria-pressed':on?'true':'false',onclick:function(){var a=S.days[dk]||(S.days[dk]=[true,true,true,true,true,true,true]);a[di]=!on;save();render()},text:n}))});
+  wrap.appendChild(drow);
+  if(!ts.length)wrap.appendChild(h('p',{class:'muted',text:'Add the first step below.'}));
+  ts.forEach(function(t,i){
+    function move(d){var j=i+d;if(j<0||j>=ts.length)return;var x=ts[i];ts[i]=ts[j];ts[j]=x;save();render()}
+    var up=h('button',{class:'iconbtn','aria-label':'Move up',onclick:function(){move(-1)},text:'↑'}),dn=h('button',{class:'iconbtn','aria-label':'Move down',onclick:function(){move(1)},text:'↓'});
+    if(i===0)up.disabled=true;if(i===ts.length-1)dn.disabled=true;
+    wrap.appendChild(h('div',{class:'card stack'},
+      h('div',{class:'row'},h('input',{type:'text',class:'grow',value:t.title,'aria-label':'Step '+(i+1)+' title',oninput:function(){t.title=this.value;save()}}),up,dn),
+      h('input',{type:'text',value:t.instructions||'',placeholder:'Short instruction (optional)','aria-label':'Instruction',oninput:function(){t.instructions=this.value;save()}}),
+      h('div',{class:'row'},h('input',{type:'text',value:t.icon||'',placeholder:iconOf(t)||'🙂',maxlength:'4',style:'width:72px;text-align:center','aria-label':'Emoji picture',oninput:function(){t.icon=this.value.trim();save()}}),h('input',{type:'text',inputmode:'numeric',value:t.minutes||'',placeholder:'Timer (min)',style:'width:120px','aria-label':'Timer minutes',oninput:function(){t.minutes=parseInt(this.value,10)||0;save()}}),h('span',{class:'muted small',text:'Picture and optional timer'})),
+      h('button',{class:'danger',onclick:function(){ts.splice(i,1);save();render()},text:'Remove step'})));
+  });
+  wrap.appendChild(h('button',{class:'primary',onclick:function(){ts.push(T('New step'));save();render()},text:'Add step'}));
+  function addOnce(d){S.once.push({id:uid(),kid:k.id,rid:r.id,date:d,title:'New step',instructions:''});save();render()}
+  wrap.appendChild(h('h2',{text:'One-time steps'}));
+  wrap.appendChild(h('p',{class:'muted small',text:'For one day only, like a shower. They appear at the end of the routine.'}));
+  var td=dayStr(0),tm=dayStr(1),doneToday=S.log.some(function(l){return l.kid===k.id&&l.rid===r.id&&dayKey(l.t)===dayKey(Date.now())});
+  S.once.filter(function(o){return o.kid===k.id&&o.rid===r.id&&o.date>=td}).sort(function(a,b){return a.date<b.date?-1:1}).forEach(function(o){
+    wrap.appendChild(h('div',{class:'card stack'},h('span',{class:'muted small',text:o.date===td?'Today':'Tomorrow'}),
+      h('input',{type:'text',value:o.title,'aria-label':'One-time step',oninput:function(){o.title=this.value;save()}}),
+      h('button',{class:'danger',onclick:function(){S.once=S.once.filter(function(x){return x.id!==o.id});save();render()},text:'Remove'})))});
+  var orow=h('div',{class:'row'}),bt=h('button',{class:'grow',onclick:function(){addOnce(td)},text:'Add for today'});
+  if(doneToday)bt.disabled=true;
+  orow.appendChild(bt);orow.appendChild(h('button',{class:'grow',onclick:function(){addOnce(tm)},text:'Add for tomorrow'}));
+  wrap.appendChild(orow);
+  if(doneToday)wrap.appendChild(h('p',{class:'muted small',text:k.name+' already finished this routine today, so new steps go to tomorrow.'}));
+  wrap.appendChild(h('h2',{text:'Bonus steps'}));
+  wrap.appendChild(h('p',{class:'muted small',text:'Optional, up to 3. After finishing this routine, '+k.name+' can pick one bonus step per day.'}));
+  var bs=bonusOf(k.id,r.id);
+  bs.forEach(function(b,i){
+    var sel=h('select',{'aria-label':'Reward',onchange:function(){b.reward=this.value;save()}});
+    sel.appendChild(h('option',{value:'',text:'No reward'}));
+    S.rewards.forEach(function(x){sel.appendChild(h('option',{value:x.id,text:x.text}))});
+    sel.value=b.reward||'';
+    wrap.appendChild(h('div',{class:'card stack'},
+      h('input',{type:'text',value:b.title,'aria-label':'Bonus step title',oninput:function(){b.title=this.value;save()}}),
+      h('input',{type:'text',value:b.instructions||'',placeholder:'Short instruction (optional)','aria-label':'Instruction',oninput:function(){b.instructions=this.value;save()}}),
+      sel,
+      h('button',{class:'danger',onclick:function(){bs.splice(i,1);save();render()},text:'Remove bonus step'})));
+  });
+  var addb=h('button',{onclick:function(){bs.push({id:uid(),title:'New bonus step',instructions:'',reward:''});save();render()},text:'Add bonus step'});
+  if(bs.length>=3)addb.disabled=true;
+  wrap.appendChild(addb);
+  var others=S.kids.filter(function(x){return x.id!==k.id});
+  if(others.length){
+    var sel=h('select',{'aria-label':'Copy steps from'});others.forEach(function(o){sel.appendChild(h('option',{value:o.id,text:o.name}))});
+    var cb=h('button',{onclick:function(){twoTap(this,'copy','Tap again to replace',function(){
+      S.tasks[k.id+':'+r.id]=tasksOf(sel.value,r.id).map(function(t){return Object.assign(T(t.title,t.instructions),{icon:t.icon,minutes:t.minutes})});save();go(V)})},text:'Copy'});
+    wrap.appendChild(h('div',{class:'card stack'},h('span',{class:'muted small',text:'Copy this routine’s steps from another child (replaces these steps)'}),h('div',{class:'row'},sel,cb)));
+  }
+  return wrap
+}
+
+function render(){
+  var app=document.getElementById('app');app.textContent='';
+  var v={home:home,kidhome:kidhome,kid:kid,done:done,parent:parent,kidnew:kidnew,kidedit:kidedit,edit:edit,bonuspick:bonuspick,bonus:bonus,bonusdone:bonusdone,pin:pin,backup:backup}[V.name]||home;
+  app.appendChild(v());
+}
+render();
+</script>
+</body>
+</html>

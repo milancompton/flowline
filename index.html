@@ -112,14 +112,14 @@ function tasksOf(k,r){var key=k+':'+r;return S.tasks[key]||(S.tasks[key]=[])}
 function bonusOf(k,r){var key=k+':'+r;return S.bonus[key]||(S.bonus[key]=[])}
 function bonusCsv(){var rows=['date,child,routine,bonus,reward,given'];S.bonusLog.forEach(function(b){var k=by(S.kids,b.kid),r=by(S.routines,b.rid);rows.push([new Date(b.t).toLocaleDateString('en-CA'),k?k.name:'',r?r.name:'',b.title,b.reward,b.given?'yes':'no'].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))});return rows.join('\n')}
 function dayStr(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
-function stepsFor(k,r){var td=dayStr(0);return tasksOf(k,r).concat(S.once.filter(function(o){return o.kid===k&&o.rid===r&&o.date===td&&o.title.trim()}))}
+function stepsFor(k,r){var td=dayStr(0);return tasksOf(k,r).filter(function(t){return (t.title||'').trim()}).concat(wxExtra(r)).concat(S.once.filter(function(o){return o.kid===k&&o.rid===r&&o.date===td&&o.title.trim()}))}
 function todayIdx(){return (new Date().getDay()+6)%7}
 function onDay(k,r,d){var a=S.days[k+':'+r];return !a||a[d]!==false}
 function doneToday(k,r){return S.log.some(function(l){return l.kid===k&&l.rid===r&&dayKey(l.t)===dayKey(Date.now())})}
-var ICONS=[[/teeth|tooth|brush/i,'🪥'],[/dress|clothes/i,'👕'],[/breakfast|cereal/i,'🥣'],[/shoe|sock/i,'👟'],[/backpack|bag/i,'🎒'],[/shower|bath/i,'🚿'],[/pajama|pjs/i,'🌙'],[/book|read/i,'📖'],[/snack|fruit/i,'🍎'],[/hand|wash/i,'🧼'],[/lunch/i,'🥪'],[/dinner|table|meal|dish/i,'🍽️'],[/homework/i,'✏️'],[/light|bed|sleep/i,'😴'],[/dog|pet|feed/i,'🐕'],[/trash|garbage/i,'🗑️'],[/hair|comb/i,'🪮'],[/tidy|clean|room|toy/i,'🧹'],[/water|drink|bottle/i,'💧'],[/coat|jacket|hat/i,'🧥'],[/music|practice|instrument/i,'🎵'],[/door|leave|bus/i,'🚪'],[/vitamin|medicine/i,'💊'],[/laundry|hamper/i,'🧺'],[/floss/i,'🦷']];
+var ICONS=[[/teeth|tooth|brush/i,'🪥'],[/dress|clothes/i,'👕'],[/breakfast|cereal/i,'🥣'],[/shoe|sock/i,'👟'],[/backpack|bag/i,'🎒'],[/toilet|bathroom|restroom|potty/i,'🚽'],[/shower|bath/i,'🚿'],[/pajama|pjs/i,'🌙'],[/book|read/i,'📖'],[/snack|fruit/i,'🍎'],[/hand|wash/i,'🧼'],[/lunch/i,'🥪'],[/dinner|table|meal|dish/i,'🍽️'],[/homework/i,'✏️'],[/light|bed|sleep/i,'😴'],[/dog|pet|feed/i,'🐕'],[/trash|garbage/i,'🗑️'],[/hair|comb/i,'🪮'],[/tidy|clean|room|toy/i,'🧹'],[/water|drink|bottle/i,'💧'],[/coat|jacket|hat/i,'🧥'],[/music|practice|instrument/i,'🎵'],[/door|leave|bus/i,'🚪'],[/vitamin|medicine/i,'💊'],[/laundry|hamper/i,'🧺'],[/floss/i,'🦷']];
 function iconOf(t){if(t.icon==='none')return '';if(t.icon)return t.icon;for(var i=0;i<ICONS.length;i++)if(ICONS[i][0].test(t.title||''))return ICONS[i][1];return ''}
 function iconBtn(t){return iconOf(t)||'Pick'}
-var PICKS=['🪥','🧼','🚿','👕','👟','🧦','🎒','🥣','🍎','🥪','🍽️','🥛','📖','✏️','🧩','🎨','⚽','🚲','🐕','🐈','🌱','🧺','🛏️','🗑️','🧹','🌙','😴','☀️','🚪','🧥','🧢','💧','🎵','🦷','🪮','⏰','🚌','🏫','👋','💊'];
+var PICKS=['🪥','🧼','🚿','👕','👟','🧦','🎒','🥣','🍎','🥪','🍽️','🥛','📖','✏️','🧩','🎨','⚽','🚲','🐕','🐈','🌱','🧺','🛏️','🗑️','🧹','🌙','😴','☀️','🚪','🧥','🧢','💧','🎵','🦷','🪮','⏰','🚌','🏫','👋','💊','🚽'];
 function picker(t){
   var g=h('div',{style:'display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px'});
   PICKS.forEach(function(e){g.appendChild(h('button',{style:'min-height:52px;padding:0;font-size:1.6rem','aria-label':'Use '+e,onclick:function(){t.icon=e;pickId=null;save();render()},text:e}))});
@@ -135,33 +135,54 @@ function wxAdvice(j){try{var H=j.hourly,t=H.temperature_2m,p=H.precipitation_pro
   for(i=7;i<=17;i++){if(p[i]!=null)pr=Math.max(pr,p[i]);var x=c[i];if([71,73,75,77,85,86].indexOf(x)>=0)sn=true;if((x>=51&&x<=67)||(x>=80&&x<=82)||x>=95)rn=true}
   if(m===999)return null;
   var mt=Math.round(m),hi=Math.round(j.daily.temperature_2m_max[0]),sub='Morning '+mt+'°F · High '+hi+'°F';
-  if(sn)return{icon:'❄️',text:'Snow today. Wear boots and a warm coat.',sub:sub};
-  if(mt<=32)return{icon:'🧥',text:'Freezing today. Wear a heavy coat.',sub:sub};
-  if(rn||pr>=50)return{icon:'🌧️',text:'Rain likely. Grab a raincoat and boots.',sub:sub};
-  if(mt<55)return{icon:'🧥',text:'Chilly today. Wear a jacket.',sub:sub};
-  return{icon:'☀️',text:'Nice out. No jacket needed.',sub:sub}}catch(e){return null}}
+  if(sn)return{icon:'❄️',text:'Snow today. Wear boots and a warm coat.',sub:sub,cat:'snow'};
+  if(mt<=32)return{icon:'🧥',text:'Freezing today. Wear a heavy coat.',sub:sub,cat:'freeze'};
+  if(rn||pr>=50)return{icon:'🌧️',text:'Rain likely. Grab a raincoat and boots.',sub:sub,cat:'rain'};
+  if(mt<55)return{icon:'🧥',text:'Chilly today. Wear a jacket.',sub:sub,cat:'chilly'};
+  return{icon:'☀️',text:'Nice out. No jacket needed.',sub:sub,cat:'nice'}}catch(e){return null}}
 function wxFill(el,a){el.textContent='';el.appendChild(h('div',{style:'font-size:2.4rem;line-height:1','aria-hidden':'true',text:a.icon}));
   el.appendChild(h('div',{class:'grow'},h('div',{style:'font-size:1.15rem;font-weight:500',text:a.text}),h('div',{class:'muted small',text:a.sub})));el.style.display=''}
 function wxLoad(el){var w=S.weather;if(!w||w.lat==null)return;
-  var c=w.cache,sameDay=c&&c.d===dayStr(0);
+  var c=w.cache,sameDay=c&&c.d===dayStr(0)&&c.a&&c.a.cat;
   if(sameDay)wxFill(el,c.a);
   if(sameDay&&Date.now()-c.t<10800000)return;
   try{fetch('https://api.open-meteo.com/v1/forecast?latitude='+w.lat+'&longitude='+w.lon+'&hourly=temperature_2m,precipitation_probability,weather_code&daily=temperature_2m_max&temperature_unit=fahrenheit&timezone=auto&forecast_days=1')
-    .then(function(r){return r.json()}).then(function(j){var a=wxAdvice(j);if(!a)return;w.cache={t:Date.now(),d:dayStr(0),a:a};save();wxFill(el,a)}).catch(function(){})}catch(e){}}
+    .then(function(r){return r.json()}).then(function(j){var a=wxAdvice(j);if(!a)return;w.cache={t:Date.now(),d:dayStr(0),a:a};save();wxFill(el,a);if(V.name==='kidhome')render()}).catch(function(){})}catch(e){}}
 function weather(){
   var w=S.weather,msg=h('p',{class:'muted small',text:''}),res=h('div',{class:'stack'}),inp=h('input',{type:'text',placeholder:'City (for example, Everett)','aria-label':'City'});
   function search(){var q=inp.value.trim();if(q.length<2){msg.textContent='Enter a city name.';return}msg.textContent='Searching…';res.textContent='';
     try{fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(q)+'&count=5&language=en&format=json').then(function(r){return r.json()}).then(function(j){
       var rs=j.results||[];msg.textContent=rs.length?'Tap your location:':'No match. Try a nearby city.';
       rs.forEach(function(x){var label=[x.name,x.admin1,x.country].filter(Boolean).join(', ');
-        res.appendChild(h('button',{onclick:function(){S.weather={name:label,lat:Math.round(x.latitude*100)/100,lon:Math.round(x.longitude*100)/100,cache:null};save();render()},text:label}))})
+        res.appendChild(h('button',{onclick:function(){S.weather={name:label,lat:Math.round(x.latitude*100)/100,lon:Math.round(x.longitude*100)/100,cache:null,auto:w&&w.auto,morn:w&&w.morn,aft:w&&w.aft};save();render()},text:label}))})
     }).catch(function(){msg.textContent='Couldn’t reach the weather service. Check the internet connection.'})}catch(e){msg.textContent='Couldn’t reach the weather service.'}}
+  var opts=null;
+  if(w&&w.lat!=null){
+    var rsel=function(label,key){var s=h('select',{'aria-label':label,onchange:function(){w[key]=this.value;save()}});
+      s.appendChild(h('option',{value:'',text:'Automatic (by name)'}));
+      S.routines.forEach(function(r){s.appendChild(h('option',{value:r.id,text:r.name}))});
+      s.appendChild(h('option',{value:'none',text:'None'}));s.value=w[key]||'';
+      return h('div',{class:'stack',style:'gap:6px'},h('span',{class:'muted small',text:label}),s)};
+    opts=h('div',{class:'card stack'},
+      h('div',{class:'row'},h('div',{class:'grow'},h('b',{text:'Add weather steps'}),h('div',{class:'muted small',text:'Adds a jacket or boots step to the morning routine and a hang-it-up step after school.'})),h('button',{onclick:function(){w.auto=(w.auto===false);save();render()},text:w.auto===false?'Turn on':'Turn off'})),
+      rsel('Morning routine','morn'),rsel('After-school routine','aft'));
+  }
   inp.onkeydown=function(e){if(e.key==='Enter')search()};
   return h('div',{class:'stack'},topBar('‹ Grown-ups',{name:'parent',tab:'today'}),h('h1',{text:'Weather'}),
     h('p',{class:'muted small',text:'Shows a jacket-and-boots hint on each child’s routine list. Your city’s rounded coordinates (no names or routines) are sent to Open-Meteo, a free weather service. Needs an internet connection.'}),
     w&&w.lat!=null?h('div',{class:'card row'},h('div',{class:'grow'},h('b',{text:w.name}),h('div',{class:'muted small',text:'Current location'})),h('button',{class:'danger',onclick:function(){S.weather=null;save();render()},text:'Turn off'})):h('p',{class:'muted',text:'Weather is off.'}),
-    inp,h('button',{class:'primary',onclick:search,text:'Find my city'}),msg,res)
+    opts,inp,h('button',{class:'primary',onclick:search,text:'Find my city'}),msg,res)
 }
+function selNew(el){if(/^New /.test(el.value))setTimeout(function(){try{el.setSelectionRange(0,el.value.length)}catch(e){}},0)}
+var WXSTEPS={snow:['Put on your boots and warm coat','Put away your boots and coat'],freeze:['Put on your heavy coat','Hang up your heavy coat'],rain:['Put on your raincoat and boots','Hang up your raincoat and put away your boots'],chilly:['Put on your jacket','Hang up your jacket']};
+function wxRid(w,which){var id=which==='m'?w.morn:w.aft;if(id==='none')return null;if(id&&by(S.routines,id))return id;
+  var re=which==='m'?/morning/i:/after/i,r=S.routines.filter(function(x){return re.test(x.name)})[0];return r?r.id:null}
+function wxExtra(rid){var w=S.weather;if(!w||w.lat==null||w.auto===false||!w.cache||w.cache.d!==dayStr(0)||!w.cache.a||!w.cache.a.cat)return [];
+  var s=WXSTEPS[w.cache.a.cat];if(!s)return [];
+  var ic={snow:'🥾',freeze:'🧥',rain:'☔',chilly:'🧥'}[w.cache.a.cat];
+  if(rid===wxRid(w,'m'))return [{id:'wx-m',title:s[0],instructions:'',icon:ic,wx:1}];
+  if(rid===wxRid(w,'a'))return [{id:'wx-a',title:s[1],instructions:'',icon:ic,wx:1}];
+  return []}
 function speak(s){try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(s);u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
 var timer={end:0,key:''};
 function tmText(){var s=Math.max(0,Math.round((timer.end-Date.now())/1000));return s?Math.floor(s/60)+':'+('0'+s%60).slice(-2):'Time’s up'}
@@ -227,7 +248,7 @@ function kid(){
       V.i>0?h('button',{class:'ghost',onclick:function(){go({name:'kid',kid:k.id,rid:r.id,i:V.i-1})},text:'‹ Previous step'}):null))
 }
 
-function bonusEligible(k,r){return bonusOf(k,r).length>0&&!S.bonusLog.some(function(b){return b.kid===k&&dayKey(b.t)===dayKey(Date.now())})}
+function bonusEligible(k,r){return bonusOf(k,r).filter(function(b){return (b.title||'').trim()}).length>0&&!S.bonusLog.some(function(b){return b.kid===k&&dayKey(b.t)===dayKey(Date.now())})}
 function rewardText(id){var x=by(S.rewards,id);return x?x.text:''}
 function done(){
   var r=by(S.routines,V.rid)||{name:''},kk=V.kid,rr=V.rid,back=function(){go({name:'kidhome',kid:kk})};
@@ -236,7 +257,7 @@ function done(){
 }
 function bonuspick(){
   var list=h('div',{class:'stack'});
-  bonusOf(V.kid,V.rid).forEach(function(b){var rt=rewardText(b.reward);
+  bonusOf(V.kid,V.rid).filter(function(b){return (b.title||'').trim()}).forEach(function(b){var rt=rewardText(b.reward);
     list.appendChild(h('button',{class:'routine',onclick:function(){go({name:'bonus',kid:V.kid,rid:V.rid,b:b.id})}},h('b',{text:b.title}),rt?h('span',{class:'muted small',text:rt}):null))});
   return h('div',{class:'stack'},topBar('‹ Back',{name:'kidhome',kid:V.kid}),h('h1',{text:'Pick a bonus'}),h('p',{class:'muted',text:'Choose one.'}),list)
 }
@@ -291,12 +312,12 @@ function parent(){
       var cs=h('select',{'aria-label':'Type',onchange:function(){r.cat=this.value;save()}},h('option',{value:'routine',text:'Routine'}),h('option',{value:'chore',text:'Chore'}));cs.value=r.cat==='chore'?'chore':'routine';
       var u=h('button',{class:'iconbtn','aria-label':'Move up',onclick:function(){mv(-1)},text:'↑'}),dw=h('button',{class:'iconbtn','aria-label':'Move down',onclick:function(){mv(1)},text:'↓'});
       if(ri===0)u.disabled=true;if(ri===S.routines.length-1)dw.disabled=true;
-      wrap.appendChild(h('div',{class:'card stack'},h('div',{class:'row'},h('input',{type:'text',class:'grow','data-f':r.id,value:r.name,'aria-label':'Routine name',oninput:function(){r.name=this.value;save()}}),u,dw),h('div',{class:'row'},cs,del)))});
+      wrap.appendChild(h('div',{class:'card stack'},h('div',{class:'row'},h('input',{type:'text',class:'grow','data-f':r.id,onfocus:function(){selNew(this)},value:r.name,'aria-label':'Routine name',oninput:function(){r.name=this.value;save()}}),u,dw),h('div',{class:'row'},cs,del)))});
     wrap.appendChild(h('button',{onclick:function(){var nr={id:uid(),name:'New routine'};S.routines.push(nr);focusId=nr.id;save();render()},text:'Add routine'}));
     wrap.appendChild(h('button',{class:'primary',style:'min-height:64px',onclick:function(){go({name:'parent',tab:'today'})},text:'Done'}));
   }else if(V.tab==='rewards'){
     wrap.appendChild(h('p',{class:'muted small',text:'Reward ideas to attach to bonus steps. Time and choices only, no money.'}));
-    S.rewards.forEach(function(x,i){wrap.appendChild(h('div',{class:'card row'},h('input',{type:'text',class:'grow','data-f':x.id,value:x.text,'aria-label':'Reward',oninput:function(){x.text=this.value;save()}}),h('button',{class:'danger',onclick:function(){S.rewards.splice(i,1);save();render()},text:'Remove'})))});
+    S.rewards.forEach(function(x,i){wrap.appendChild(h('div',{class:'card row'},h('input',{type:'text',class:'grow','data-f':x.id,onfocus:function(){selNew(this)},value:x.text,'aria-label':'Reward',oninput:function(){x.text=this.value;save()}}),h('button',{class:'danger',onclick:function(){S.rewards.splice(i,1);save();render()},text:'Remove'})))});
     wrap.appendChild(h('button',{onclick:function(){var nw={id:uid(),text:'New reward'};S.rewards.push(nw);focusId=nw.id;save();render()},text:'Add reward'}));
     wrap.appendChild(h('button',{class:'primary',style:'min-height:64px',onclick:function(){go({name:'parent',tab:'today'})},text:'Done'}));
   }else{
@@ -412,6 +433,7 @@ function edit(){
   wrap.appendChild(h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go({name:'kidedit',kid:k.id})},text:'‹ '+k.name}),h('span',{class:'muted small',text:'Saved on this device'})));
   wrap.appendChild(h('h1',{text:r.name}));
   wrap.appendChild(h('p',{class:'muted',text:'Steps for '+k.name}));
+  var wxs=wxExtra(r.id);if(wxs.length)wrap.appendChild(h('p',{class:'muted small',text:'Today’s weather step is added automatically: “'+wxs[0].title+'”.'}));
   var dk=k.id+':'+r.id,drow=h('div',{class:'row',style:'gap:6px'});
   wrap.appendChild(h('span',{class:'muted small',text:'Days this routine runs'}));
   ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(n,di){
@@ -425,20 +447,20 @@ function edit(){
     if(i===0)up.disabled=true;if(i===ts.length-1)dn.disabled=true;
     var ib=h('button',{class:'iconbtn','aria-label':'Choose picture',style:'min-width:64px;font-size:1.5rem',onclick:function(){pickId=pickId===t.id?null:t.id;render()},text:iconBtn(t)});
     wrap.appendChild(h('div',{class:'card stack'},
-      h('div',{class:'row'},h('input',{type:'text',class:'grow','data-f':t.id,value:t.title,'aria-label':'Step '+(i+1)+' title',oninput:function(){t.title=this.value;save();ib.textContent=iconBtn(t)}}),up,dn),
+      h('div',{class:'row'},h('input',{type:'text',class:'grow','data-f':t.id,placeholder:'Step name',value:t.title,'aria-label':'Step '+(i+1)+' title',oninput:function(){t.title=this.value;save();ib.textContent=iconBtn(t)}}),up,dn),
       h('input',{type:'text',value:t.instructions||'',placeholder:'Short instruction (optional)','aria-label':'Instruction',oninput:function(){t.instructions=this.value;save()}}),
       h('div',{class:'row'},ib,h('input',{type:'text',inputmode:'numeric',value:t.minutes||'',placeholder:'Timer (min)',style:'width:120px','aria-label':'Timer minutes',oninput:function(){t.minutes=parseInt(this.value,10)||0;save()}}),h('span',{class:'muted small',text:'Picture and optional timer'})),
       pickId===t.id?picker(t):null,
       h('button',{class:'danger',onclick:function(){ts.splice(i,1);save();render()},text:'Remove step'})));
   });
-  wrap.appendChild(h('button',{class:'primary',onclick:function(){var n=T('New step');ts.push(n);focusId=n.id;save();render()},text:'Add step'}));
-  function addOnce(d){var o={id:uid(),kid:k.id,rid:r.id,date:d,title:'New step',instructions:''};S.once.push(o);focusId=o.id;save();render()}
+  wrap.appendChild(h('button',{class:'primary',onclick:function(){var n=T('');ts.push(n);focusId=n.id;save();render()},text:'Add step'}));
+  function addOnce(d){var o={id:uid(),kid:k.id,rid:r.id,date:d,title:'',instructions:''};S.once.push(o);focusId=o.id;save();render()}
   wrap.appendChild(h('h2',{text:'One-time steps'}));
   wrap.appendChild(h('p',{class:'muted small',text:'For one day only, like a shower. They appear at the end of the routine.'}));
   var td=dayStr(0),tm=dayStr(1),doneToday=S.log.some(function(l){return l.kid===k.id&&l.rid===r.id&&dayKey(l.t)===dayKey(Date.now())});
   S.once.filter(function(o){return o.kid===k.id&&o.rid===r.id&&o.date>=td}).sort(function(a,b){return a.date<b.date?-1:1}).forEach(function(o){
     wrap.appendChild(h('div',{class:'card stack'},h('span',{class:'muted small',text:o.date===td?'Today':'Tomorrow'}),
-      h('input',{type:'text','data-f':o.id,value:o.title,'aria-label':'One-time step',oninput:function(){o.title=this.value;save()}}),
+      h('input',{type:'text','data-f':o.id,placeholder:'Step name',value:o.title,'aria-label':'One-time step',oninput:function(){o.title=this.value;save()}}),
       h('button',{class:'danger',onclick:function(){S.once=S.once.filter(function(x){return x.id!==o.id});save();render()},text:'Remove'})))});
   var orow=h('div',{class:'row'}),bt=h('button',{class:'grow',onclick:function(){addOnce(td)},text:'Add for today'});
   if(doneToday)bt.disabled=true;
@@ -454,12 +476,12 @@ function edit(){
     S.rewards.forEach(function(x){sel.appendChild(h('option',{value:x.id,text:x.text}))});
     sel.value=b.reward||'';
     wrap.appendChild(h('div',{class:'card stack'},
-      h('input',{type:'text','data-f':b.id,value:b.title,'aria-label':'Bonus step title',oninput:function(){b.title=this.value;save()}}),
+      h('input',{type:'text','data-f':b.id,placeholder:'Bonus step name',value:b.title,'aria-label':'Bonus step title',oninput:function(){b.title=this.value;save()}}),
       h('input',{type:'text',value:b.instructions||'',placeholder:'Short instruction (optional)','aria-label':'Instruction',oninput:function(){b.instructions=this.value;save()}}),
       sel,
       h('button',{class:'danger',onclick:function(){bs.splice(i,1);save();render()},text:'Remove bonus step'})));
   });
-  var addb=h('button',{onclick:function(){var nb={id:uid(),title:'New bonus step',instructions:'',reward:''};bs.push(nb);focusId=nb.id;save();render()},text:'Add bonus step'});
+  var addb=h('button',{onclick:function(){var nb={id:uid(),title:'',instructions:'',reward:''};bs.push(nb);focusId=nb.id;save();render()},text:'Add bonus step'});
   if(bs.length>=3)addb.disabled=true;
   wrap.appendChild(addb);
   var others=S.kids.filter(function(x){return x.id!==k.id});
@@ -479,7 +501,7 @@ function render(){
   var KS={kidhome:1,kid:1,done:1,bonuspick:1,bonus:1,bonusdone:1},ck=KS[V.name]&&by(S.kids,V.kid);
   if(ck)document.body.setAttribute('data-c',kidColor(ck));else document.body.removeAttribute('data-c');
   app.appendChild(v());
-  if(focusId){var f=app.querySelector('[data-f="'+focusId+'"]');focusId=null;if(f){f.focus();try{f.setSelectionRange(0,f.value.length)}catch(e){}}}
+  if(focusId){var f=app.querySelector('[data-f="'+focusId+'"]');focusId=null;if(f){f.focus();try{f.select();f.setSelectionRange(0,f.value.length)}catch(e){}}}
 }
 render();
 </script>

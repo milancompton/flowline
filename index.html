@@ -91,10 +91,47 @@ var DEF={'Morning':[['Brush teeth','Top, bottom, and front.'],['Get dressed','Pi
 'After School':[['Hang up backpack'],['Wash hands'],['Have a snack'],['Unpack lunch box']],
 'Evening':[['Put on pajamas'],['Brush teeth'],['Pick a book'],['Lights out']]};
 function defTasks(n){return (DEF[n]||[]).map(function(x){return T(x[0],x[1])})}
-function defRewards(){return ['Pick dessert','Pick the family meal','Extra reading time','Pick a show to watch with Mom or Dad'].map(function(t){return {id:uid(),text:t}})}
-function seed(){var rs=['Morning','After School','Evening'].map(function(n){return {id:uid(),name:n}}),k={id:uid(),name:'Child 1'},s={kids:[k],routines:rs,tasks:{},log:[],bonus:{},bonusLog:[],once:[],days:{},prog:{},rewards:defRewards()};
+var OLDREW=['Pick dessert','Pick the family meal','Extra reading time','Pick a show to watch with Mom or Dad'];
+function defRewards(){var A=[['Extra reading time (10 minutes at bedtime)',0,0],['A parent unpacks your backpack and lunch box after school',0,0],['Pick the bedtime story',0,0],['10 minutes of one-on-one time with a parent',0,0],['Pick one song to play at dinner or in the car',0,0],['Choose your own cup, bowl, or pajamas',0,0],['Extra tuck-in cuddle',0,0],['10 extra minutes outside, weather permitting',0,0],
+['Pick dessert',1,0],['Pick a family game',1,0],['Pick tomorrow’s breakfast',1,0],['Be the helper chef (choose what you help make for dinner)',1,0],
+['Pick the movie',1,1],['Pick dinner out',1,1],['Pick the weekend outing (park or library)',1,1],['Picnic or living-room campout',1,1],['Pick a weekend breakfast (like pancakes)',1,1]];
+  return A.map(function(x){return {id:uid(),text:x[0],one:!!x[1],wk:!!x[2]}})}
+var BONUSES=[
+['Art Kindness','Draw a picture for someone in the family.'],
+['Calm Body Break','Do 2-3 minutes of breathing or stretching.'],
+['Community Kindness','Write a positive note to a teacher, coach, or grandparent.'],
+['Dinner Helper','Chop veggies, set the table, prep drinks.'],
+['Family Check In','Call a family member to say "Hi" and ask how they’re doing.'],
+['Gratitude Moment','Say one thing you appreciate about someone in the house.'],
+['Help a Sibling','Ask a sibling if they need help with a small task.'],
+['Household Helper','Ask, "What’s one adult task I can take off your plate today?"'],
+['Kindness Card','Write a short note, thank you card, or apology card for a family member.'],
+['Laundry Buddy','See who needs a load started.'],
+['Laundry Leadership','Own a full load, start to finish (wash, dry, fold, put away).'],
+['Mail Collector','Go get the mail.'],
+['Meal Maker','Choose and prep lunch and dinner for siblings.'],
+['Micro-Clean','Wipe down 5 doorknobs or handles.'],
+['Mindful Reset','Do some breathing exercises, journaling, or quiet reflection.'],
+['Movement Break','Ride your bike for 10 minutes.'],
+['Mudroom Check','Put shoes, coats, hats, and toys back where they belong.'],
+['Organize a Zone','Tidy one family hotspot (pantry, mudroom, front door).'],
+['Personal Reset','Clean out your backpack or sports bag.'],
+['Piece Patrol','Find and return any stray puzzle or game pieces.'],
+['Plan a Family Moment','Choose and set up a simple family activity (game, walk).'],
+['Reading Break','Set a timer and read for 20 minutes.'],
+['Reset a Room','Choose one shared space and do a 5-minute tidy.'],
+['Room Reset','Do a full reset of your room (floor, desks).'],
+['Skill Builder','Pick a softball drill, shoot hoops, or play catch for 15 minutes.'],
+['Snack Prep','Make a simple shared snack (fruit bowls, crackers).'],
+['Toy Rescue','Pick 10-15 toys to put back in their home.'],
+['Trash Patrol','Empty small trash cans around the house.'],
+['Water the Plants','Give indoor plants a drink.']];
+function defBonuses(){return BONUSES.map(function(x){return {id:uid(),title:x[0],desc:x[1]}})}
+function migrateBonus(d){var l=defBonuses(),seen={};l.forEach(function(b){seen[b.title.toLowerCase()]=1});
+  Object.keys(d.bonus||{}).forEach(function(key){(d.bonus[key]||[]).forEach(function(b){var t=(b.title||'').trim();if(t&&!seen[t.toLowerCase()]){seen[t.toLowerCase()]=1;l.push({id:uid(),title:t,desc:b.instructions||''})}})});return l}
+function seed(){var rs=['Morning','After School','Evening'].map(function(n){return {id:uid(),name:n}}),k={id:uid(),name:'Child 1'},s={kids:[k],routines:rs,tasks:{},log:[],bonus:{},bonusLog:[],once:[],days:{},prog:{},bpick:{},bonusList:defBonuses(),rewardsV:2,rewards:defRewards()};
 rs.forEach(function(r){s.tasks[k.id+':'+r.id]=defTasks(r.name)});return s}
-function load(){try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&Array.isArray(d.kids)&&Array.isArray(d.routines)){d.tasks=d.tasks||{};d.log=d.log||[];d.bonus=d.bonus||{};d.bonusLog=d.bonusLog||[];d.rewards=d.rewards||defRewards();d.days=d.days||{};d.prog=d.prog||{};d.once=(d.once||[]).filter(function(o){return o.date>=dayStr(0)});return d}}}catch(e){}return seed()}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&Array.isArray(d.kids)&&Array.isArray(d.routines)){d.tasks=d.tasks||{};d.log=d.log||[];d.bonus=d.bonus||{};d.bonusLog=d.bonusLog||[];if(d.rewardsV!==2){var cu=(d.rewards||[]).filter(function(x){return OLDREW.indexOf(x.text)<0});d.rewards=defRewards().concat(cu);d.rewardsV=2}d.days=d.days||{};d.prog=d.prog||{};d.once=(d.once||[]).filter(function(o){return o.date>=dayStr(0)});d.bpick=d.bpick||{};d.bonusList=d.bonusList||migrateBonus(d);return d}}}catch(e){}return seed()}
 var toastEl=null,toastT=0;
 function toast(){if(!GATED[V.name])return;if(!toastEl){toastEl=document.createElement('div');toastEl.setAttribute('role','status');toastEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:20px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:5';toastEl.textContent='Saved ✓';document.body.appendChild(toastEl)}toastEl.style.opacity='1';clearTimeout(toastT);toastT=setTimeout(function(){toastEl.style.opacity='0'},1200)}
 function save(){var ok=true;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){ok=false}if(ok)toast()}
@@ -116,7 +153,7 @@ function stepsFor(k,r){var td=dayStr(0);return tasksOf(k,r).filter(function(t){r
 function todayIdx(){return (new Date().getDay()+6)%7}
 function onDay(k,r,d){var a=S.days[k+':'+r];return !a||a[d]!==false}
 function doneToday(k,r){return S.log.some(function(l){return l.kid===k&&l.rid===r&&dayKey(l.t)===dayKey(Date.now())})}
-var ICONS=[[/teeth|tooth|brush/i,'🪥'],[/dress|clothes/i,'👕'],[/breakfast|cereal/i,'🥣'],[/shoe|sock/i,'👟'],[/backpack|bag/i,'🎒'],[/toilet|bathroom|restroom|potty/i,'🚽'],[/shower|bath/i,'🚿'],[/pajama|pjs/i,'🌙'],[/book|read/i,'📖'],[/snack|fruit/i,'🍎'],[/hand|wash/i,'🧼'],[/lunch/i,'🥪'],[/dinner|table|meal|dish/i,'🍽️'],[/homework/i,'✏️'],[/light|bed|sleep/i,'😴'],[/dog|pet|feed/i,'🐕'],[/trash|garbage/i,'🗑️'],[/hair|comb/i,'🪮'],[/tidy|clean|room|toy/i,'🧹'],[/water|drink|bottle/i,'💧'],[/coat|jacket|hat/i,'🧥'],[/music|practice|instrument/i,'🎵'],[/door|leave|bus/i,'🚪'],[/vitamin|medicine/i,'💊'],[/laundry|hamper/i,'🧺'],[/floss/i,'🦷']];
+var ICONS=[[/\bart\b|draw/i,'🎨'],[/plant/i,'🌱'],[/\bmail\b/i,'📬'],[/bike|movement/i,'🚲'],[/calm|mindful|breath|stretch/i,'🧘'],[/kindness|gratitude|thank/i,'💌'],[/check in/i,'📞'],[/skill|drill|hoops/i,'⚽'],[/teeth|tooth|brush/i,'🪥'],[/dress|clothes/i,'👕'],[/breakfast|cereal/i,'🥣'],[/shoe|sock/i,'👟'],[/backpack|bag/i,'🎒'],[/toilet|bathroom|restroom|potty/i,'🚽'],[/shower|bath/i,'🚿'],[/pajama|pjs/i,'🌙'],[/book|read/i,'📖'],[/snack|fruit/i,'🍎'],[/hand|wash/i,'🧼'],[/lunch/i,'🥪'],[/dinner|table|meal|dish/i,'🍽️'],[/homework/i,'✏️'],[/light|bed|sleep/i,'😴'],[/dog|pet|feed/i,'🐕'],[/trash|garbage/i,'🗑️'],[/hair|comb/i,'🪮'],[/tidy|clean|room|toy/i,'🧹'],[/water|drink|bottle/i,'💧'],[/coat|jacket|hat/i,'🧥'],[/music|practice|instrument/i,'🎵'],[/door|leave|bus/i,'🚪'],[/vitamin|medicine/i,'💊'],[/laundry|hamper/i,'🧺'],[/floss/i,'🦷']];
 function iconOf(t){if(t.icon==='none')return '';if(t.icon)return t.icon;for(var i=0;i<ICONS.length;i++)if(ICONS[i][0].test(t.title||''))return ICONS[i][1];return ''}
 function iconBtn(t){return iconOf(t)||'Pick'}
 var PICKS=['🪥','🧼','🚿','👕','👟','🧦','🎒','🥣','🍎','🥪','🍽️','🥛','📖','✏️','🧩','🎨','⚽','🚲','🐕','🐈','🌱','🧺','🛏️','🗑️','🧹','🌙','😴','☀️','🚪','🧥','🧢','💧','🎵','🦷','🪮','⏰','🚌','🏫','👋','💊','🚽'];
@@ -215,25 +252,29 @@ function kidhome(){
   var ch=S.routines.filter(function(r){return r.cat==='chore'});
   if(ch.length){var before=shown;list.appendChild(h('h2',{text:'Chores',style:'margin-top:8px'}));ch.forEach(addR);if(shown===before)list.removeChild(list.lastChild)}
   if(!shown)list.appendChild(h('p',{class:'muted',text:'Nothing scheduled today.'}));
+  var gr=S.log.filter(function(l){return l.kid===k.id&&l.ok&&dayKey(l.t)===dayKey(Date.now())})[0],gb=null;
+  if(gr&&bonusEligible(k.id,gr.rid))gb=h('button',{class:'primary big',onclick:function(){var pk=bonusPick(k.id,gr.rid);if(pk)go({name:'bonus',kid:k.id,rid:gr.rid,b:pk.id})},text:'Bonus step ready'});
   var wx=null;if(S.weather&&S.weather.lat!=null){wx=h('div',{class:'card row',style:'display:none;gap:14px'});wxLoad(wx)}
-  return h('div',{class:'stack'},topBar('‹ Back',{name:'home'}),h('h1',{text:k.name}),wx,h('p',{class:'muted',text:'Choose a routine.'}),list,h('span',{class:'muted small',style:'margin-top:8px',text:'My color'}),swatches(k))
+  return h('div',{class:'stack'},topBar('‹ Back',{name:'home'}),h('h1',{text:k.name}),wx,gb,h('p',{class:'muted',text:'Choose a routine.'}),list,h('span',{class:'muted small',style:'margin-top:8px',text:'My color'}),swatches(k))
 }
 
 function kid(){
   var k=by(S.kids,V.kid),r=by(S.routines,V.rid);if(!k||!r)return home();
   var ts=stepsFor(k.id,r.id);if(!ts.length)return kidhome();
   if(V.i>=ts.length)V.i=ts.length-1;
-  var pkey=k.id+':'+r.id,pg=S.prog[pkey];if(!pg||pg.d!==dayStr(0))pg=S.prog[pkey]={d:dayStr(0),i:0,s:Date.now()};pg.i=V.i;save();
+  var pkey=k.id+':'+r.id,pg=S.prog[pkey];if(!pg||pg.d!==dayStr(0))pg=S.prog[pkey]={d:dayStr(0),i:0,s:Date.now()};pg.i=V.i;save();ts=orderSteps(ts,pg);
   var t=ts[V.i],dots=h('div',{class:'dots','aria-hidden':'true'});
-  var speechOk='speechSynthesis' in window,skey=pkey+':'+V.i,tmr=null;
+  var speechOk='speechSynthesis' in window,skey=pkey+':'+t.id,tmr=null;
   if(t.minutes>0)tmr=timer.key===skey?h('p',{id:'tmr',style:'font-size:2.2rem;font-weight:500',text:tmText()}):h('button',{onclick:function(){timer={end:Date.now()+t.minutes*60000,key:skey};render()},text:'Start timer · '+t.minutes+' min'});
+  function later(){var ids=ts.map(function(x){return x.id}),i=ids.indexOf(t.id);ids.splice(i,1);ids.push(t.id);pg.ord=ids;save();go({name:'kid',kid:k.id,rid:r.id,i:V.i})}
   function finish(skip){pg.sk=pg.sk||[];var ix=pg.sk.indexOf(t.id);if(skip){if(ix<0)pg.sk.push(t.id)}else if(ix>=0)pg.sk.splice(ix,1);
     if(V.i+1<ts.length){go({name:'kid',kid:k.id,rid:r.id,i:V.i+1});return}
-    var skt=ts.filter(function(x){return pg.sk.indexOf(x.id)>=0}).map(function(x){return x.title});
-    S.log.push({kid:k.id,rid:r.id,t:Date.now(),s:pg.s,sk:skt.length,skt:skt});save();go({name:'done',kid:k.id,rid:r.id,sk:skt.length})}
+    var has=ts.some(function(x){return pg.sk.indexOf(x.id)>=0});save();
+    if(has&&k.skipCheck!==false){go({name:'review',kid:k.id,rid:r.id});return}
+    completeRoutine(k,r)}
   ts.forEach(function(_,i){dots.appendChild(h('span',{class:'dot '+(i<V.i?'done':i===V.i?'now':'')}))});
   return h('div',{class:'kid'},
-    h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go({name:'kidhome',kid:k.id})},text:'‹ Back'}),h('span',{class:'muted small',text:k.name+' · '+r.name})),
+    h('div',{class:'top'},h('button',{class:'ghost',onclick:function(){go({name:'kidhome',kid:k.id})},text:'‹ Back'}),h('button',{class:'ghost',onclick:function(){go({name:'allsteps',kid:k.id,rid:r.id,i:V.i})},text:'All steps'})),
     dots,
     h('div',{class:'kidmain','aria-live':'polite'},
       h('span',{class:'muted small',text:'Step '+(V.i+1)+' of '+ts.length}),
@@ -244,28 +285,60 @@ function kid(){
       tmr),
     h('div',{class:'stack'},
       h('button',{class:'primary big',onclick:function(){finish(false)},text:'Done'}),
-      h('button',{class:'ghost',onclick:function(){finish(true)},text:'Skip this step'}),
+      h('div',{class:'row',style:'justify-content:center;gap:4px'},V.i<ts.length-1?h('button',{class:'ghost',onclick:later,text:'Do this later'}):null,h('button',{class:'ghost',onclick:function(){finish(true)},text:'Skip this step'})),
       V.i>0?h('button',{class:'ghost',onclick:function(){go({name:'kid',kid:k.id,rid:r.id,i:V.i-1})},text:'‹ Previous step'}):null))
 }
 
-function bonusEligible(k,r){return bonusOf(k,r).filter(function(b){return (b.title||'').trim()}).length>0&&!S.bonusLog.some(function(b){return b.kid===k&&dayKey(b.t)===dayKey(Date.now())})}
+function completeRoutine(k,r){var pkey=k.id+':'+r.id,pg=S.prog[pkey]||{},ts=orderSteps(stepsFor(k.id,r.id),pg),sk=pg.sk||[],
+  skt=ts.filter(function(x){return sk.indexOf(x.id)>=0}).map(function(x){return x.title});
+  S.log.push({kid:k.id,rid:r.id,t:Date.now(),s:pg.s,sk:skt.length,skt:skt});save();go({name:'done',kid:k.id,rid:r.id,sk:skt.length})}
+function review(){
+  var k=by(S.kids,V.kid),r=by(S.routines,V.rid);if(!k||!r)return home();
+  var pkey=k.id+':'+r.id,pg=S.prog[pkey]||{},ts=orderSteps(stepsFor(k.id,r.id),pg),sk=pg.sk||[],sx=ts.filter(function(t){return sk.indexOf(t.id)>=0});
+  if(!sx.length)return kidhome();
+  var list=h('div',{class:'stack'});
+  sx.forEach(function(t){var ic=iconOf(t);list.appendChild(h('div',{class:'card row',style:'gap:14px'},ic?h('div',{style:'font-size:2rem;line-height:1','aria-hidden':'true',text:ic}):null,h('b',{class:'grow',style:'font-weight:500',text:t.title})))});
+  return h('div',{class:'kid'},topBar('‹ Back',{name:'kidhome',kid:k.id}),
+    h('div',{class:'kidmain'},h('h1',{text:'Almost done!'}),h('p',{class:'muted',text:'These steps were skipped. Finish them to get a bonus step.'}),list),
+    h('div',{class:'stack'},
+      h('button',{class:'primary big',onclick:function(){var ids=ts.map(function(x){return x.id}),keep=ids.filter(function(id){return sk.indexOf(id)<0}),mv=ids.filter(function(id){return sk.indexOf(id)>=0});pg.ord=keep.concat(mv);S.prog[pkey]=pg;save();go({name:'kid',kid:k.id,rid:r.id,i:keep.length})},text:'Do these now'}),
+      h('p',{class:'muted small',style:'text-align:center',text:'If you finish without them, there is no bonus step today.'}),
+      h('button',{class:'ghost',onclick:function(){completeRoutine(k,r)},text:'Finish without them'})))
+}
+function orderSteps(ts,pg){if(!pg||!pg.ord)return ts;var pos=function(t){var i=pg.ord.indexOf(t.id);return i<0?9999:i};
+  return ts.map(function(t,i){return [t,i]}).sort(function(a,b){return (pos(a[0])-pos(b[0]))||(a[1]-b[1])}).map(function(x){return x[0]})}
+function allsteps(){
+  var k=by(S.kids,V.kid),r=by(S.routines,V.rid);if(!k||!r)return home();
+  var pkey=k.id+':'+r.id,pg=S.prog[pkey]||{},ts=orderSteps(stepsFor(k.id,r.id),pg),list=h('div',{class:'stack'});
+  ts.forEach(function(t,i){
+    var isDone=i<V.i,skipped=(pg.sk||[]).indexOf(t.id)>=0,ic=iconOf(t),tag=isDone?(skipped?'Skipped':'Done ✓'):(i===V.i?'Up now':'');
+    var b=h('button',{class:'routine',style:'min-height:64px;padding:14px 20px',onclick:function(){if(isDone)return;var ids=ts.map(function(x){return x.id});ids.splice(i,1);ids.splice(V.i,0,t.id);pg.ord=ids;S.prog[pkey]=pg;save();go({name:'kid',kid:k.id,rid:r.id,i:V.i})}},h('b',{style:'font-size:1.15rem',text:(ic?ic+'  ':'')+t.title}),tag?h('span',{class:'muted small',text:tag}):null);
+    if(isDone)b.style.opacity='.6';list.appendChild(b)});
+  return h('div',{class:'stack'},topBar('‹ Back',{name:'kid',kid:k.id,rid:r.id,i:V.i}),h('h1',{text:r.name}),h('p',{class:'muted',text:'Tap a step to do it next.'}),list)
+}
+function bonusLive(){return S.bonusList.filter(function(b){return (b.title||'').trim()})}
+function bonusPick(k,r){var key=k+':'+r,p=S.bpick[key],live=bonusLive();
+  if(p&&p.d===dayStr(0)){var f=by(live,p.id);if(f)return f}
+  var recent=S.bonusLog.filter(function(b){return b.kid===k}).slice(-10).map(function(b){return b.title}),pool=live.filter(function(b){return recent.indexOf(b.title)<0});
+  if(!pool.length)pool=live;var c=pool[Math.floor(Math.random()*pool.length)];if(!c)return null;
+  S.bpick[key]={d:dayStr(0),id:c.id};save();return c}
+function bonusEligible(k,r){return bonusLive().length>0&&!S.bonusLog.some(function(b){return b.kid===k&&dayKey(b.t)===dayKey(Date.now())})}
+function rewardDraw(k){var wd=new Date().getDay(),wk=(wd===0||wd===6),today=S.bonusLog.filter(function(b){return dayKey(b.t)===dayKey(Date.now())}),
+  usedToday=today.map(function(b){return b.rwid}),mine=S.bonusLog.filter(function(b){return b.kid===k&&b.rwid}).slice(-3).map(function(b){return b.rwid}),
+  live=S.rewards.filter(function(x){return (x.text||'').trim()&&(!x.wk||wk)&&!(x.one&&usedToday.indexOf(x.id)>=0)}),
+  pool=live.filter(function(x){return mine.indexOf(x.id)<0});
+  if(!pool.length)pool=live;return pool.length?pool[Math.floor(Math.random()*pool.length)]:null}
 function rewardText(id){var x=by(S.rewards,id);return x?x.text:''}
 function done(){
   var r=by(S.routines,V.rid)||{name:''},kk=V.kid,rr=V.rid,back=function(){go({name:'kidhome',kid:kk})};
-  var btns=(!V.sk&&bonusEligible(kk,rr))?h('div',{class:'stack'},h('button',{class:'primary big',onclick:function(){go({name:'bonuspick',kid:kk,rid:rr})},text:'Want a bonus step?'}),h('button',{class:'ghost',onclick:back,text:'Not now'})):h('button',{class:'primary big',onclick:back,text:'Back to routines'});
-  return h('div',{class:'kid'},h('div',{class:'kidmain center'},h('h1',{text:V.sk?'Finished.':'All done.'}),h('p',{class:'muted',text:V.sk?'Some steps were skipped.':r.name+' is finished.'})),btns)
-}
-function bonuspick(){
-  var list=h('div',{class:'stack'});
-  bonusOf(V.kid,V.rid).filter(function(b){return (b.title||'').trim()}).forEach(function(b){var rt=rewardText(b.reward);
-    list.appendChild(h('button',{class:'routine',onclick:function(){go({name:'bonus',kid:V.kid,rid:V.rid,b:b.id})}},h('b',{text:b.title}),rt?h('span',{class:'muted small',text:rt}):null))});
-  return h('div',{class:'stack'},topBar('‹ Back',{name:'kidhome',kid:V.kid}),h('h1',{text:'Pick a bonus'}),h('p',{class:'muted',text:'Choose one.'}),list)
+  var btns=(!V.sk&&bonusEligible(kk,rr))?h('div',{class:'stack'},h('button',{class:'primary big',onclick:function(){var pk=bonusPick(kk,rr);if(pk)go({name:'bonus',kid:kk,rid:rr,b:pk.id})},text:'Want a bonus step?'}),h('button',{class:'ghost',onclick:back,text:'Not now'})):h('button',{class:'primary big',onclick:back,text:'Back to routines'});
+  return h('div',{class:'kid'},h('div',{class:'kidmain center'},h('h1',{text:V.sk?'Finished.':'All done.'}),h('p',{class:'muted',text:r.name+' is finished.'})),btns)
 }
 function bonus(){
-  var b=by(bonusOf(V.kid,V.rid),V.b);if(!b)return kidhome();
-  return h('div',{class:'kid'},topBar('‹ Back',{name:'bonuspick',kid:V.kid,rid:V.rid}),
-    h('div',{class:'kidmain'},h('span',{class:'muted small',text:'Bonus'}),iconOf(b)?h('div',{style:'font-size:4.5rem;line-height:1','aria-hidden':'true',text:iconOf(b)}):null,h('h1',{text:b.title}),b.instructions?h('p',{class:'muted',text:b.instructions}):null),
-    h('button',{class:'primary big',onclick:function(){var rt=rewardText(b.reward);S.bonusLog.push({id:uid(),kid:V.kid,rid:V.rid,t:Date.now(),title:b.title,reward:rt,given:false});save();go({name:'bonusdone',reward:rt,kid:V.kid})},text:'Done'}))
+  var b=by(S.bonusList,V.b);if(!b)return kidhome();
+  return h('div',{class:'kid'},topBar('‹ Back',{name:'kidhome',kid:V.kid}),
+    h('div',{class:'kidmain'},h('span',{class:'muted small',text:'Bonus'}),iconOf(b)?h('div',{style:'font-size:4.5rem;line-height:1','aria-hidden':'true',text:iconOf(b)}):null,h('h1',{text:b.title}),b.desc?h('p',{class:'muted',text:b.desc}):null),
+    h('button',{class:'primary big',onclick:function(){var rw=rewardDraw(V.kid),rt=rw?rw.text:'';S.bonusLog.push({id:uid(),kid:V.kid,rid:V.rid,t:Date.now(),title:b.title,reward:rt,rwid:rw?rw.id:null,given:false});save();go({name:'bonusdone',reward:rt,kid:V.kid})},text:'Done'}))
 }
 function bonusdone(){
   return h('div',{class:'kid'},h('div',{class:'kidmain center'},h('h1',{text:'Bonus done.'}),V.reward?h('p',{class:'muted',text:'Reward: '+V.reward}):null),
@@ -276,7 +349,7 @@ function parent(){
   var wrap=h('div',{class:'stack'});
   wrap.appendChild(h('div',{class:'top'},h('h1',{text:'Grown-ups'}),h('button',{class:'ghost',onclick:function(){go({name:'home'})},text:'Kid view'})));
   var tabs=h('div',{class:'tabs'});
-  [['today','Today'],['kids','Children'],['routines','Routines'],['rewards','Rewards'],['progress','Progress']].forEach(function(x){tabs.appendChild(h('button',{class:V.tab===x[0]?'on':'',onclick:function(){go({name:'parent',tab:x[0]})},text:x[1]}))});
+  [['today','Today'],['kids','Children'],['routines','Routines'],['bonuses','Bonuses'],['rewards','Rewards'],['progress','Progress']].forEach(function(x){tabs.appendChild(h('button',{class:V.tab===x[0]?'on':'',onclick:function(){go({name:'parent',tab:x[0]})},text:x[1]}))});
   wrap.appendChild(tabs);
   if(V.tab==='today'){
     var tdx=todayIdx(),any=false;
@@ -286,12 +359,13 @@ function parent(){
       S.routines.forEach(function(r){
         if(!onDay(k.id,r.id,tdx))return;var n=stepsFor(k.id,r.id).length;if(!n)return;any=true;
         var key=k.id+':'+r.id,pg=S.prog[key],lg=S.log.filter(function(l){return l.kid===k.id&&l.rid===r.id&&dayKey(l.t)===dayKey(Date.now())}).pop(),st;
-        if(lg)st='Done '+new Date(lg.t).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+(lg.s?' · '+Math.max(1,Math.round((lg.t-lg.s)/60000))+' min':'')+(lg.sk?' · '+lg.sk+' skipped':'');
+        if(lg)st='Done '+new Date(lg.t).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+(lg.s?' · '+Math.max(1,Math.round((lg.t-lg.s)/60000))+' min':'')+(lg.sk?' · '+lg.sk+' skipped':'')+(lg.ok?' · bonus allowed':'');
         else if(pg&&pg.d===dayStr(0))st='In progress · step '+(pg.i+1)+' of '+n;
         else st='Not started';
         var row=h('div',{class:'row'},h('div',{class:'grow'},h('div',{text:r.name}),h('div',{class:'muted small',text:st})));
         if(lg&&lg.skt&&lg.skt.length)row.firstChild.appendChild(h('div',{class:'small',text:'Skipped: '+lg.skt.join(', ')}));
         if(lg||(pg&&pg.d===dayStr(0)))row.appendChild(h('button',{class:'danger',onclick:function(){twoTap(this,'rs'+key,'Tap again to reset',function(){delete S.prog[key];S.log=S.log.filter(function(l){return !(l.kid===k.id&&l.rid===r.id&&dayKey(l.t)===dayKey(Date.now()))});save();render()})},text:'Reset'}));
+        if(lg&&lg.sk&&!lg.ok&&!S.bonusLog.some(function(b){return b.kid===k.id&&dayKey(b.t)===dayKey(Date.now())}))row.appendChild(h('button',{onclick:function(){lg.ok=true;save();render()},text:'Allow bonus'}));
         card.appendChild(row)});
       wrap.appendChild(card)});
     if(!any)wrap.appendChild(h('p',{class:'muted',text:'No routines scheduled today.'}));
@@ -315,10 +389,22 @@ function parent(){
       wrap.appendChild(h('div',{class:'card stack'},h('div',{class:'row'},h('input',{type:'text',class:'grow','data-f':r.id,onfocus:function(){selNew(this)},value:r.name,'aria-label':'Routine name',oninput:function(){r.name=this.value;save()}}),u,dw),h('div',{class:'row'},cs,del)))});
     wrap.appendChild(h('button',{onclick:function(){var nr={id:uid(),name:'New routine'};S.routines.push(nr);focusId=nr.id;save();render()},text:'Add routine'}));
     wrap.appendChild(h('button',{class:'primary',style:'min-height:64px',onclick:function(){go({name:'parent',tab:'today'})},text:'Done'}));
+  }else if(V.tab==='bonuses'){
+    wrap.appendChild(h('p',{class:'muted small',text:'After a routine is finished with no skipped steps, each child is offered one bonus picked at random from this list (one bonus per child per day). Their last 10 are avoided so they don’t repeat. '+bonusLive().length+' bonuses.'}));
+    wrap.appendChild(h('button',{onclick:function(){var nb={id:uid(),title:'',desc:''};S.bonusList.unshift(nb);focusId=nb.id;save();render()},text:'Add bonus'}));
+    S.bonusList.forEach(function(b,i){wrap.appendChild(h('div',{class:'card stack'},
+      h('input',{type:'text','data-f':b.id,placeholder:'Bonus name',value:b.title,'aria-label':'Bonus name',oninput:function(){b.title=this.value;save()}}),
+      h('input',{type:'text',placeholder:'What to do',value:b.desc||'','aria-label':'What to do',oninput:function(){b.desc=this.value;save()}}),
+      h('button',{class:'danger',onclick:function(){S.bonusList.splice(i,1);save();render()},text:'Remove'})))});
+    wrap.appendChild(h('button',{class:'primary',style:'min-height:64px',onclick:function(){go({name:'parent',tab:'today'})},text:'Done'}));
   }else if(V.tab==='rewards'){
-    wrap.appendChild(h('p',{class:'muted small',text:'Reward ideas to attach to bonus steps. Time and choices only, no money.'}));
-    S.rewards.forEach(function(x,i){wrap.appendChild(h('div',{class:'card row'},h('input',{type:'text',class:'grow','data-f':x.id,onfocus:function(){selNew(this)},value:x.text,'aria-label':'Reward',oninput:function(){x.text=this.value;save()}}),h('button',{class:'danger',onclick:function(){S.rewards.splice(i,1);save();render()},text:'Remove'})))});
-    wrap.appendChild(h('button',{onclick:function(){var nw={id:uid(),text:'New reward'};S.rewards.push(nw);focusId=nw.id;save();render()},text:'Add reward'}));
+    wrap.appendChild(h('p',{class:'muted small',text:'When a child finishes a bonus, one reward is picked at random from this list. “One child a day” rewards go to only one child per day. “Weekends only” rewards appear on Saturday and Sunday. Time and choices only, no money.'}));
+    wrap.appendChild(h('button',{onclick:function(){var nw={id:uid(),text:'New reward',one:false,wk:false};S.rewards.unshift(nw);focusId=nw.id;save();render()},text:'Add reward'}));
+    S.rewards.forEach(function(x,i){
+      function tg(label,key){return h('button',{class:'chip'+(x[key]?' on':''),style:'min-height:44px','aria-pressed':x[key]?'true':'false',onclick:function(){x[key]=!x[key];save();render()},text:label})}
+      wrap.appendChild(h('div',{class:'card stack'},
+        h('div',{class:'row'},h('input',{type:'text',class:'grow','data-f':x.id,onfocus:function(){selNew(this)},value:x.text,'aria-label':'Reward',oninput:function(){x.text=this.value;save()}}),h('button',{class:'danger',onclick:function(){S.rewards.splice(i,1);save();render()},text:'Remove'})),
+        h('div',{class:'row',style:'gap:8px'},tg('One child a day','one'),tg('Weekends only','wk'))))});
     wrap.appendChild(h('button',{class:'primary',style:'min-height:64px',onclick:function(){go({name:'parent',tab:'today'})},text:'Done'}));
   }else{
     var m=new Date();m.setHours(12,0,0,0);m.setDate(m.getDate()-((m.getDay()+6)%7));var days=[];for(var i=0;i<7;i++){var dd=new Date(m);dd.setDate(m.getDate()+i);days.push(dd.getTime())}
@@ -412,6 +498,7 @@ function kidedit(){
   wrap.appendChild(h('span',{class:'muted small',text:'Name'}));
   wrap.appendChild(h('input',{type:'text',value:k.name,'aria-label':'Child name',oninput:function(){k.name=this.value;save()}}));
   wrap.appendChild(h('span',{class:'muted small',text:'Color'}));wrap.appendChild(swatches(k));
+  wrap.appendChild(h('div',{class:'card row'},h('div',{class:'grow'},h('b',{text:'Skipped-step check'}),h('div',{class:'muted small',text:k.skipCheck===false?'Off: finishing with skipped steps ends the routine right away.':'On: a summary appears before finishing if any steps were skipped.'})),h('button',{onclick:function(){k.skipCheck=(k.skipCheck===false);save();render()},text:k.skipCheck===false?'Turn on':'Turn off'})));
   wrap.appendChild(h('h2',{text:'Routines for '+(k.name||'this child')}));
   S.routines.forEach(function(r){
     wrap.appendChild(h('div',{class:'card row'},h('div',{class:'grow'},h('b',{text:r.name}),h('div',{class:'muted small',text:plural(tasksOf(k.id,r.id).length)})),
@@ -467,23 +554,6 @@ function edit(){
   orow.appendChild(bt);orow.appendChild(h('button',{class:'grow',onclick:function(){addOnce(tm)},text:'Add for tomorrow'}));
   wrap.appendChild(orow);
   if(doneToday)wrap.appendChild(h('p',{class:'muted small',text:k.name+' already finished this routine today, so new steps go to tomorrow.'}));
-  wrap.appendChild(h('h2',{text:'Bonus steps'}));
-  wrap.appendChild(h('p',{class:'muted small',text:'Optional, up to 3. After finishing this routine, '+k.name+' can pick one bonus step per day.'}));
-  var bs=bonusOf(k.id,r.id);
-  bs.forEach(function(b,i){
-    var sel=h('select',{'aria-label':'Reward',onchange:function(){b.reward=this.value;save()}});
-    sel.appendChild(h('option',{value:'',text:'No reward'}));
-    S.rewards.forEach(function(x){sel.appendChild(h('option',{value:x.id,text:x.text}))});
-    sel.value=b.reward||'';
-    wrap.appendChild(h('div',{class:'card stack'},
-      h('input',{type:'text','data-f':b.id,placeholder:'Bonus step name',value:b.title,'aria-label':'Bonus step title',oninput:function(){b.title=this.value;save()}}),
-      h('input',{type:'text',value:b.instructions||'',placeholder:'Short instruction (optional)','aria-label':'Instruction',oninput:function(){b.instructions=this.value;save()}}),
-      sel,
-      h('button',{class:'danger',onclick:function(){bs.splice(i,1);save();render()},text:'Remove bonus step'})));
-  });
-  var addb=h('button',{onclick:function(){var nb={id:uid(),title:'',instructions:'',reward:''};bs.push(nb);focusId=nb.id;save();render()},text:'Add bonus step'});
-  if(bs.length>=3)addb.disabled=true;
-  wrap.appendChild(addb);
   var others=S.kids.filter(function(x){return x.id!==k.id});
   if(others.length){
     var sel=h('select',{'aria-label':'Copy steps from'});others.forEach(function(o){sel.appendChild(h('option',{value:o.id,text:o.name}))});
@@ -497,8 +567,8 @@ function edit(){
 
 function render(){
   var app=document.getElementById('app');app.textContent='';
-  var v={home:home,kidhome:kidhome,kid:kid,done:done,parent:parent,kidnew:kidnew,kidedit:kidedit,edit:edit,bonuspick:bonuspick,bonus:bonus,bonusdone:bonusdone,pin:pin,backup:backup,weather:weather}[V.name]||home;
-  var KS={kidhome:1,kid:1,done:1,bonuspick:1,bonus:1,bonusdone:1},ck=KS[V.name]&&by(S.kids,V.kid);
+  var v={home:home,kidhome:kidhome,kid:kid,done:done,parent:parent,kidnew:kidnew,kidedit:kidedit,edit:edit,bonus:bonus,bonusdone:bonusdone,allsteps:allsteps,review:review,pin:pin,backup:backup,weather:weather}[V.name]||home;
+  var KS={kidhome:1,kid:1,allsteps:1,review:1,done:1,bonus:1,bonusdone:1},ck=KS[V.name]&&by(S.kids,V.kid);
   if(ck)document.body.setAttribute('data-c',kidColor(ck));else document.body.removeAttribute('data-c');
   app.appendChild(v());
   if(focusId){var f=app.querySelector('[data-f="'+focusId+'"]');focusId=null;if(f){f.focus();try{f.select();f.setSelectionRange(0,f.value.length)}catch(e){}}}
